@@ -1,0 +1,26 @@
+{
+  "name": "@cnmcp/api",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit --incremental false",
+    "test": "vitest run",
+    "d1:local": "wrangler d1 migrations apply cnmcp --local"
+  },
+  "dependencies": {
+    "@cnmcp/checkers": "*",
+    "@cnmcp/schema": "*",
+    "hono": "4.9.8"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20250906.0",
+    "typescript": "5.9.3",
+    "vitest": "3.2.4",
+    "wrangler": "4.38.0"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "transport": "remote",
+  "alive": {
+    "ok": true,
+    "protocolVersion": "2025-03-26",
+    "latencyMs": 42
+  },
+  "toolsActual": [
+    { "name": "search", "description": "keyword search" },
+    { "name": "lookup", "description": "id lookup" },
+    { "name": "status", "description": "health" }
+  ],
+  "toolsClaimed": ["search", "lookup", "status"],
+  "probe": {
+    "reachable": true,
+    "latencyMs": 42
+  },
+  "lastPublishedAt": "2026-09-18T00:00:00.000Z",
+  "versionCount": 8,
+  "now": 1758412800000
+}

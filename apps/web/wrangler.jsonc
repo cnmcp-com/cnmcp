@@ -1,0 +1,14 @@
+{
+  "name": "cnmcp-web",
+  "compatibility_date": "2025-09-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "pages_build_output_dir": ".next",
+  "vars": {
+    "API_URL": "https://api.cnmcp.com",
+    "NEXT_PUBLIC_API_URL": "https://api.cnmcp.com",
+    "NEXT_PUBLIC_SITE_URL": "https://www.cnmcp.com"
+  },
+  "routes": [
+    { "pattern": "www.cnmcp.com/*", "zone_name": "cnmcp.com" }
+  ]
+}

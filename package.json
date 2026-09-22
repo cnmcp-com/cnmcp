@@ -1,0 +1,28 @@
+{
+  "name": "cnmcp",
+  "private": true,
+  "version": "0.1.0",
+  "description": "CNMCP — 中文 MCP 可信评测与准入层",
+  "license": "Apache-2.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @cnmcp/api & npm run dev -w @cnmcp/web",
+    "dev:api": "npm run dev -w @cnmcp/api",
+    "dev:web": "npm run dev -w @cnmcp/web",
+    "test": "npm run test --workspaces --if-present && node --test scripts/tencent-plaza/categories.test.mjs",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "crawl:tencent-plaza": "node scripts/tencent-plaza/crawl.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vitest": "3.2.4"
+  }
+}

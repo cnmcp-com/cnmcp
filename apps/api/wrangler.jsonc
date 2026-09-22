@@ -1,0 +1,46 @@
+{
+  "name": "cnmcp-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "vars": {
+    "ALLOWED_ORIGINS": "http://localhost:3000,https://www.cnmcp.com"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cnmcp",
+      "database_id": "a648e64c-8857-4efe-90bb-20d4eb715698",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "EVIDENCE",
+      "bucket_name": "cnmcp-evidence"
+    }
+  ],
+  "queues": {
+    "producers": [
+      { "binding": "VERIFY_QUEUE", "queue": "cnmcp-verify" }
+    ],
+    "consumers": [
+      {
+        "queue": "cnmcp-verify",
+        "max_batch_size": 4,
+        "max_batch_timeout": 30
+      }
+    ]
+  },
+  "workflows": [
+    {
+      "binding": "INGEST_WORKFLOW",
+      "name": "cnmcp-ingest",
+      "class_name": "IngestWorkflow"
+    }
+  ],
+  "triggers": {
+    "crons": ["17 */6 * * *"]
+  }
+}
