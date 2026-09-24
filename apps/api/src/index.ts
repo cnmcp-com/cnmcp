@@ -187,7 +187,9 @@ export default {
   async scheduled(_controller: ScheduledController, env: Bindings, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(
       (async () => {
-        await env.INGEST_WORKFLOW.create({ params: { cursor: null } });
+        // The production catalog currently uses the curated local dataset as its
+        // source of truth. Keep the registry workflow available for a future
+        // opt-in import, but do not merge Official Registry records on schedule.
         const due = await listDueServerIds(env.DB, 200);
         if (due.length && env.VERIFY_QUEUE) {
           await env.VERIFY_QUEUE.sendBatch(due.map((serverId) => ({ body: { serverId } })));
