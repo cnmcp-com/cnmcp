@@ -1,3 +1,9 @@
+import type { PublisherMatch } from "./publishers";
+
+export { readmeToBlocks, sourceLabelOf } from "./present";
+export { blockedSourceSql, isOfficialPublisher, knownRankSql, matchPublisher, publisherCatalog } from "./publishers";
+export type { PublisherMatch, PublisherTier } from "./publishers";
+
 export const ALGORITHM_VERSION = "v1.0";
 
 export const V1_WEIGHTS = {
@@ -72,6 +78,56 @@ export type ToolRecord = {
   lastSeenAt: string;
 };
 
+export type ToolParameter = {
+  name: string;
+  type: string | null;
+  description: string | null;
+  required: boolean;
+};
+
+export type DeclaredTool = {
+  name: string;
+  description: string;
+  inputSchema: unknown;
+  parameters: ToolParameter[];
+};
+
+export type SourceCategory = {
+  id: string;
+  name: string;
+};
+
+export type PlazaCategory = {
+  categoryId: number;
+  name: string;
+};
+
+export type SourceInfo = {
+  author: string | null;
+  iconUrl: string | null;
+  srcUrl: string | null;
+  srcSite: string | null;
+  plazaUrl: string | null;
+  categories: SourceCategory[];
+  plazaCategories: PlazaCategory[];
+};
+
+export type ReliableConfig = {
+  config: { mcpServers: Record<string, unknown> };
+  source: "readme" | "remote";
+};
+
+export type SourceReadme = {
+  body: string;
+  collectedAt: string | null;
+};
+
+export type ReadmeBlock =
+  | { type: "heading"; level: 1 | 2 | 3; text: string }
+  | { type: "paragraph"; text: string }
+  | { type: "list"; items: string[] }
+  | { type: "code"; text: string };
+
 export type Verification = {
   id: string;
   serverId: string;
@@ -100,10 +156,31 @@ export type CheckerComponent = {
 
 export type ChangeEvent = {
   serverId: string;
-  type: "tool_added" | "tool_removed" | "description_changed" | "schema_changed" | "pricing_changed";
+  type:
+    | "tool_added"
+    | "tool_removed"
+    | "description_changed"
+    | "schema_changed"
+    | "pricing_changed"
+    | "repository_updated"
+    | "repository_archived"
+    | "repository_restored"
+    | "default_branch_changed";
   severity: "info" | "warn" | "high";
   diff: unknown;
   detectedAt: string;
+};
+
+export type ActivityItem = {
+  kind: "verification" | "change";
+  serverId: string;
+  title: string;
+  status: ServerStatus | null;
+  severity: "info" | "warn" | "high";
+  score: number | null;
+  grade: Grade | null;
+  detail: string;
+  occurredAt: string;
 };
 
 export type Submission = {
@@ -124,6 +201,7 @@ export type ServerSummary = {
   isOfficial: boolean;
   status: ServerStatus;
   score: number | null;
+  staticScore: number | null;
   grade: Grade | null;
   algorithmVersion: string;
   reachableProbe: boolean | null;
@@ -133,6 +211,8 @@ export type ServerSummary = {
   lastPublishedAt: string | null;
   protocolVersion: string | null;
   sourceRegistries: string[];
+  sourceLabel: string | null;
+  publisher: PublisherMatch | null;
 };
 
 export type ServerDetail = ServerSummary & {
@@ -149,6 +229,10 @@ export type ServerDetail = ServerSummary & {
   pricing: Pricing;
   endpoints: Endpoint[];
   tools: ToolRecord[];
+  declaredTools: DeclaredTool[];
+  source: SourceInfo;
+  reliableConfig: ReliableConfig | null;
+  readme: SourceReadme | null;
   claimedToolNames: string[];
   verifications: Verification[];
   snapshots: ScoreSnapshot[];
@@ -184,11 +268,14 @@ export type CatalogIndex = {
 
 export type DirectoryQuery = {
   q: string;
+  business: string;
   grade: Grade | "";
   reachable: "yes" | "no" | "";
   transport: Transport | "";
   official: "yes" | "no" | "";
   pricing: PricingModel | "";
+  verification: "dynamic" | "static" | "incomplete" | "";
+  sort: "dynamic" | "static" | "recent" | "official" | "";
   cursor: string;
   limit: number;
 };

@@ -27,3 +27,7 @@ data/
 !/.vscode/extensions.json
 _docs/
 scripts/
+!scripts/
+scripts/*
+!scripts/check-cloudflare-prerequisites.mjs
+!scripts/smoke-deployment.mjs

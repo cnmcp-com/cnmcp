@@ -83,18 +83,22 @@ export function checkContract(actual: ToolInput[], claimed: string[]): CheckerCo
 }
 
 export function checkProbe(transport: Transport, probe: ScoreInput["probe"]): CheckerComponent {
-  if (transport !== "remote") {
+  if (transport !== "remote" && probe.reachable == null) {
     return {
       status: "skip",
       score: V1_WEIGHTS.probe,
-      evidence: { skipped: true, reason: "local_or_unknown", note: "非 remote 端点不做本站探测" },
+      evidence: { skipped: true, reason: "local_or_unknown", note: "尚未做 stdio 握手" },
     };
   }
   if (probe.reachable === true) {
     return {
       status: "pass",
       score: V1_WEIGHTS.probe,
-      evidence: { reachableProbe: true, latencyMs: probe.latencyMs, note: "本站探测可达，不是中国大陆四城实测" },
+      evidence: {
+        reachableProbe: true,
+        latencyMs: probe.latencyMs,
+        note: transport === "remote" ? "本站探测可达，不是中国大陆四城实测" : "本机拉起 stdio 后完成握手，只调用了 initialize 和 tools/list",
+      },
     };
   }
   return {
@@ -158,7 +162,7 @@ export function computeTrustScore(input: ScoreInput): ScoreSnapshot {
 
   let reason: ScoreReason;
   if (input.transport === "unknown") reason = "unverifiable";
-  else if (input.transport === "local") reason = "unverified_local";
+  else if (input.transport === "local") reason = input.alive.ok ? "scored" : "unverified_local";
   else if (!input.alive.ok) reason = "dead";
   else reason = "scored";
 

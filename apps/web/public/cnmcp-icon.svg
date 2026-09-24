@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">CNMCP</title>
+  <desc id="desc">由连接节点组成的盾形标志</desc>
+  <defs>
+    <linearGradient id="bg" x1="8" y1="6" x2="55" y2="59" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#12211d"/>
+      <stop offset="1" stop-color="#07110e"/>
+    </linearGradient>
+  </defs>
+  <rect x="3" y="3" width="58" height="58" rx="17" fill="url(#bg)"/>
+  <path d="M32 12.5 49 19v12.6c0 10.1-6.8 17-17 20.3-10.2-3.3-17-10.2-17-20.3V19l17-6.5Z" fill="#DFF8ED" fill-opacity=".08" stroke="#78E0B4" stroke-width="2.5"/>
+  <path d="m22 28 10-5.5L42 28v9L32 42.5 22 37v-9Z" fill="none" stroke="#E7FFF5" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M22 28l10 5.5L42 28M32 33.5v9" fill="none" stroke="#78E0B4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="22" cy="28" r="3" fill="#E7FFF5"/>
+  <circle cx="42" cy="28" r="3" fill="#E7FFF5"/>
+  <circle cx="32" cy="42.5" r="3" fill="#78E0B4"/>
+</svg>

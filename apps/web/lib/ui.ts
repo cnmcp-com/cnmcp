@@ -1,11 +1,22 @@
-import type { CheckerStatus, Grade, PricingModel, ServerStatus, Transport, V1Checker } from "@cnmcp/schema";
+import type { CheckerStatus, Grade, ServerStatus, Transport, V1Checker } from "@cnmcp/schema";
 
 export const GRADE_TEXT: Record<Grade, string> = {
-  A: "可进生产",
-  B: "建议接入",
-  C: "谨慎使用",
-  D: "不建议使用",
+  A: "动态验证良好",
+  B: "动态验证通过",
+  C: "需谨慎",
+  D: "动态验证较差",
 };
+
+export const BUSINESS_CATEGORIES = [
+  { id: "development", label: "软件开发", description: "代码、版本控制与工程交付" },
+  { id: "data", label: "数据分析", description: "数据库、查询与商业分析" },
+  { id: "research", label: "研究检索", description: "搜索、知识库与文档处理" },
+  { id: "content", label: "内容创作", description: "写作、设计、图像与视频" },
+  { id: "operations", label: "市场运营", description: "营销、销售、SEO 与客户管理" },
+  { id: "productivity", label: "办公协作", description: "邮件、日历、项目与团队协作" },
+  { id: "automation", label: "自动化", description: "工作流、浏览器与智能体执行" },
+  { id: "security", label: "安全合规", description: "扫描、审计与风险识别" },
+] as const;
 
 export const GRADE_PILL: Record<Grade, string> = {
   A: "p-ok",
@@ -19,21 +30,6 @@ export const GRADE_COLOR: Record<Grade, string> = {
   B: "var(--info)",
   C: "var(--warn)",
   D: "var(--bad)",
-};
-
-export const PRICING: Record<PricingModel, { label: string; pill: string }> = {
-  free: { label: "免费", pill: "p-ok" },
-  byok: { label: "自带密钥 · 按量", pill: "p-info" },
-  freemium: { label: "免费额度 + 付费", pill: "p-info" },
-  subscription: { label: "订阅付费", pill: "p-warn" },
-  metered: { label: "按调用计费", pill: "p-warn" },
-  unknown: { label: "定价未知", pill: "p-gray" },
-};
-
-export const PRICING_SOURCE: Record<string, string> = {
-  official: "官方定价页",
-  vendor: "作者声明",
-  unverified: "未证实",
 };
 
 export const CHECKER_LABELS: Record<V1Checker, string> = {
@@ -55,7 +51,10 @@ export const CHANGE_TYPE: Record<string, string> = {
   tool_removed: "移除工具",
   description_changed: "描述变更",
   schema_changed: "Schema 变更",
-  pricing_changed: "定价变更",
+  repository_updated: "代码仓库更新",
+  repository_archived: "代码仓库已归档",
+  repository_restored: "代码仓库恢复维护",
+  default_branch_changed: "默认分支变更",
 };
 
 export function formatNumber(n: number): string {
@@ -84,6 +83,12 @@ export function reachLabel(transport: Transport, reachable: boolean | null): { t
   return { text: "未探测", pill: "p-gray" };
 }
 
+export function transportLabel(transport: Transport): string {
+  if (transport === "local") return "本地运行";
+  if (transport === "remote") return "远程服务";
+  return "运行方式未知";
+}
+
 export function compactJson(value: unknown): string {
   try {
     return JSON.stringify(value, null, 2);
@@ -107,13 +112,9 @@ export function sparkline(values: Array<number | null>): string {
     .join("");
 }
 
-export function isPaidModel(model: PricingModel): boolean {
-  return model === "byok" || model === "metered" || model === "subscription" || model === "freemium";
-}
-
 export function statusHint(status: ServerStatus, score: number | null): string | null {
   if (score !== null) return null;
-  if (status === "dead") return "该 server 当前验证失败，不显示虚构分数。";
-  if (status === "local_untested") return "本地 stdio 包只做元数据收录，标注未实测，不给出分数。";
-  return "尚不可验证或未完成实测，不给出分数。";
+  if (status === "dead") return "动态验证未通过；页面主分数仅代表公开证据完整度。";
+  if (status === "local_untested") return "本地 stdio 尚未完成动态握手；证据完整度不代表运行安全。";
+  return "动态验证尚未完成；证据完整度仅用于衡量来源与配置信息是否充分。";
 }

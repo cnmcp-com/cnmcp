@@ -1,4 +1,4 @@
-import type { CatalogIndex, ServerDetail, ServerSummary } from "@cnmcp/schema";
+import type { ActivityItem, CatalogIndex, ServerDetail, ServerSummary } from "@cnmcp/schema";
 
 const API_URL = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8787";
 
@@ -20,10 +20,22 @@ export async function fetchStats(): Promise<{
   verified: number;
   reachable: number;
   dead: number;
+  localUntested: number;
+  unverifiable: number;
+  official: number;
+  staticChecked: number;
+  configured: number;
+  pricingKnown: number;
+  gradeA: number;
+  gradeB: number;
   lastVerifiedAt: string | null;
   probeLabel: string;
 }> {
   return api("/v1/stats");
+}
+
+export async function fetchActivity(limit = 30): Promise<{ items: ActivityItem[] }> {
+  return api(`/v1/activity?limit=${limit}`);
 }
 
 export async function fetchDirectory(search: string): Promise<{ items: ServerSummary[]; total: number; nextCursor: string | null }> {

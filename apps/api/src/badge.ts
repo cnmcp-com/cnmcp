@@ -6,10 +6,11 @@ function escape(value: string): string {
 
 export function renderBadge(detail: ServerDetail | null): string {
   const label = "CNMCP";
-  const message = !detail ? "not found" : detail.score === null ? (detail.status === "dead" ? "dead" : "unverified") : `${detail.grade} ${detail.score}`;
+  const status = { A: "可信任", B: "基本可信", C: "需谨慎", D: "有风险" } as const;
+  const message = !detail ? "未收录" : detail.score === null ? (detail.status === "dead" ? "已失效" : "待验证") : `${detail.grade ? status[detail.grade] : "待验证"} ${detail.score}`;
   const color = !detail || detail.score === null ? "#6E6E69" : detail.grade === "A" ? "#0F6E56" : detail.grade === "B" ? "#185FA5" : detail.grade === "C" ? "#854F0B" : "#A32D2D";
   const leftWidth = 54;
-  const rightWidth = 72;
+  const rightWidth = 88;
   const width = leftWidth + rightWidth;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="20" role="img" aria-label="${escape(label)}: ${escape(message)}">

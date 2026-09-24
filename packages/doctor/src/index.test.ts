@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { DEMO_CONFIG, maskSecret, runDoctor } from "./index";
+import { ANALYSIS_RULES, DEMO_CONFIG, analyzeServerConfig, maskSecret, runDoctor } from "./index";
 
 describe("doctor", () => {
   it("masks secrets and never needs a network call to find them", () => {
     const report = runDoctor(DEMO_CONFIG, []);
     expect(report.parseError).toBeNull();
-    expect(report.secretCount).toBeGreaterThan(0);
+    expect(report.secretCount).toBe(1);
     expect(report.secrets[0]?.masked).toMatch(/…/);
     expect(report.secrets[0]?.masked).not.toContain("8f2c1a9e4b7d6c3f0a1b2c3d4e5f6a7b");
     expect(report.redactedConfig).toContain("${env:MCP_TOKEN}");
@@ -49,5 +49,23 @@ describe("doctor", () => {
 
   it("masks short secrets", () => {
     expect(maskSecret("Bearer abcdefghij")).toMatch(/\*\*\*\*/);
+  });
+
+  it("detects insecure transport, mutable packages and disabled TLS", () => {
+    const issues = analyzeServerConfig("unsafe", {
+      url: "http://user:pass@example.com/mcp?token=secret",
+      command: "npx",
+      args: ["-y", "example-mcp", "--allow-all"],
+      env: { NODE_TLS_REJECT_UNAUTHORIZED: "0" },
+    });
+    expect(issues.some((issue) => issue.text.includes("未加密 HTTP"))).toBe(true);
+    expect(issues.some((issue) => issue.text.includes("未固定版本"))).toBe(true);
+    expect(issues.some((issue) => issue.text.includes("关闭了 TLS"))).toBe(true);
+    expect(ANALYSIS_RULES.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it("detects duplicate remote endpoints", () => {
+    const report = runDoctor(JSON.stringify({ mcpServers: { first: { url: "https://example.com/mcp" }, second: { url: "https://example.com/mcp/" } } }), []);
+    expect(report.rows.every((row) => row.issues.some((issue) => issue.text.includes("同一远程端点")))).toBe(true);
   });
 });

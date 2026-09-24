@@ -4,6 +4,8 @@ interface CloudflareEnv {
   VERIFY_QUEUE?: Queue<{ serverId: string }>;
   INGEST_WORKFLOW: Workflow;
   ALLOWED_ORIGINS: string;
+  GITHUB_TOKEN?: string;
+  INTERNAL_API_TOKEN?: string;
 }
 
 declare module "cloudflare:workers" {

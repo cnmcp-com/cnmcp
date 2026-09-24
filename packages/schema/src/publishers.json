@@ -1,0 +1,569 @@
+{
+  "version": "2026-09-23.2",
+  "publishers": [
+    {
+      "id": "github.com/TencentEdgeOne",
+      "tier": "known",
+      "name": "Tencent EdgeOne",
+      "note": "EdgeOne Pages 的公开仓库"
+    },
+    {
+      "id": "github.com/modelcontextprotocol",
+      "tier": "known",
+      "name": "Model Context Protocol",
+      "note": "协议参考实现，含已归档仓库"
+    },
+    {
+      "id": "github.com/modelcontextprotocol/servers-archived",
+      "tier": "watch",
+      "name": "MCP 已归档参考实现",
+      "note": "仓库已归档，组织可追溯不等于仍在维护"
+    },
+    {
+      "id": "github.com/baidu-maps",
+      "tier": "known",
+      "name": "百度地图",
+      "note": null
+    },
+    {
+      "id": "github.com/MiniMax-AI",
+      "tier": "known",
+      "name": "MiniMax",
+      "note": null
+    },
+    {
+      "id": "github.com/1Panel-dev",
+      "tier": "known",
+      "name": "1Panel",
+      "note": "含 MaxKB 仓库"
+    },
+    {
+      "id": "github.com/alibaba",
+      "tier": "known",
+      "name": "Alibaba",
+      "note": "Higress 所在组织"
+    },
+    {
+      "id": "github.com/aliyun",
+      "tier": "known",
+      "name": "阿里云",
+      "note": "Hologres 与 AnalyticDB 的公开仓库"
+    },
+    {
+      "id": "github.com/apache",
+      "tier": "known",
+      "name": "Apache",
+      "note": "基金会仓库，含 IoTDB、APISIX、ShenYu"
+    },
+    {
+      "id": "github.com/apify",
+      "tier": "known",
+      "name": "Apify",
+      "note": null
+    },
+    {
+      "id": "github.com/Arize-ai",
+      "tier": "known",
+      "name": "Arize",
+      "note": "Phoenix 仓库"
+    },
+    {
+      "id": "github.com/bytedance",
+      "tier": "known",
+      "name": "ByteDance",
+      "note": "UI-TARS 仓库"
+    },
+    {
+      "id": "github.com/chroma-core",
+      "tier": "known",
+      "name": "Chroma",
+      "note": null
+    },
+    {
+      "id": "github.com/cloudflare",
+      "tier": "known",
+      "name": "Cloudflare",
+      "note": "含 Workers 与可观测性仓库"
+    },
+    {
+      "id": "github.com/comet-ml",
+      "tier": "known",
+      "name": "Comet",
+      "note": "Opik 仓库"
+    },
+    {
+      "id": "github.com/elastic",
+      "tier": "known",
+      "name": "Elastic",
+      "note": null
+    },
+    {
+      "id": "github.com/exa-labs",
+      "tier": "known",
+      "name": "Exa",
+      "note": null
+    },
+    {
+      "id": "github.com/get-convex",
+      "tier": "known",
+      "name": "Convex",
+      "note": null
+    },
+    {
+      "id": "github.com/getsentry",
+      "tier": "known",
+      "name": "Sentry",
+      "note": null
+    },
+    {
+      "id": "github.com/golang",
+      "tier": "known",
+      "name": "Go",
+      "note": "命中的是 golang/tools，不是独立托管端点"
+    },
+    {
+      "id": "github.com/GreptimeTeam",
+      "tier": "known",
+      "name": "Greptime",
+      "note": null
+    },
+    {
+      "id": "github.com/huggingface",
+      "tier": "known",
+      "name": "Hugging Face",
+      "note": "smolagents 仓库"
+    },
+    {
+      "id": "github.com/JetBrains",
+      "tier": "known",
+      "name": "JetBrains",
+      "note": null
+    },
+    {
+      "id": "github.com/langchain-ai",
+      "tier": "known",
+      "name": "LangChain",
+      "note": "适配器仓库，不是托管端点"
+    },
+    {
+      "id": "github.com/langgenius",
+      "tier": "known",
+      "name": "Dify",
+      "note": "LangGenius 的 Dify 仓库"
+    },
+    {
+      "id": "github.com/microsoft",
+      "tier": "known",
+      "name": "Microsoft",
+      "note": "Semantic Workbench 仓库"
+    },
+    {
+      "id": "github.com/mindsdb",
+      "tier": "known",
+      "name": "MindsDB",
+      "note": null
+    },
+    {
+      "id": "github.com/neondatabase",
+      "tier": "known",
+      "name": "Neon",
+      "note": null
+    },
+    {
+      "id": "github.com/neondatabase-labs",
+      "tier": "known",
+      "name": "Neon Labs",
+      "note": "实验室仓库，公开端点需要账号"
+    },
+    {
+      "id": "github.com/netlify",
+      "tier": "known",
+      "name": "Netlify",
+      "note": "命中的是 examples 仓库"
+    },
+    {
+      "id": "github.com/nrwl",
+      "tier": "known",
+      "name": "Nx",
+      "note": null
+    },
+    {
+      "id": "github.com/OpenLinkSoftware",
+      "tier": "known",
+      "name": "OpenLink",
+      "note": null
+    },
+    {
+      "id": "github.com/PipedreamHQ",
+      "tier": "known",
+      "name": "Pipedream",
+      "note": null
+    },
+    {
+      "id": "github.com/pydantic",
+      "tier": "known",
+      "name": "Pydantic",
+      "note": "含 Logfire 与 Pydantic AI"
+    },
+    {
+      "id": "github.com/semgrep",
+      "tier": "known",
+      "name": "Semgrep",
+      "note": null
+    },
+    {
+      "id": "github.com/Tencent",
+      "tier": "known",
+      "name": "Tencent",
+      "note": "腾讯 GitHub 组织，当前命中 COS 仓库"
+    },
+    {
+      "id": "github.com/upstash",
+      "tier": "known",
+      "name": "Upstash",
+      "note": "含 Context7"
+    },
+    {
+      "id": "github.com/weaviate",
+      "tier": "known",
+      "name": "Weaviate",
+      "note": null
+    },
+    {
+      "id": "github.com/XGenerationLab",
+      "tier": "known",
+      "name": "XGenerationLab",
+      "note": "析言 XiYan 所在组织"
+    },
+    {
+      "id": "github.com/oceanbase",
+      "tier": "known",
+      "name": "OceanBase",
+      "note": null
+    },
+    {
+      "id": "github.com/ppl-ai",
+      "tier": "known",
+      "name": "Perplexity",
+      "note": null
+    },
+    {
+      "id": "github.com/mastergo-design",
+      "tier": "known",
+      "name": "MasterGo",
+      "note": null
+    },
+    {
+      "id": "github.com/21st-dev",
+      "tier": "known",
+      "name": "21st.dev",
+      "note": null
+    },
+    {
+      "id": "github.com/graphlit",
+      "tier": "known",
+      "name": "Graphlit",
+      "note": null
+    },
+    {
+      "id": "github.com/hyperbrowserai",
+      "tier": "known",
+      "name": "Hyperbrowser",
+      "note": null
+    },
+    {
+      "id": "github.com/integration-app",
+      "tier": "known",
+      "name": "Integration.app",
+      "note": null
+    },
+    {
+      "id": "github.com/screenshotone",
+      "tier": "known",
+      "name": "ScreenshotOne",
+      "note": null
+    },
+    {
+      "id": "github.com/meilisearch",
+      "tier": "known",
+      "name": "Meilisearch",
+      "note": null
+    },
+    {
+      "id": "github.com/ragieai",
+      "tier": "known",
+      "name": "Ragie",
+      "note": null
+    },
+    {
+      "id": "github.com/e2b-dev",
+      "tier": "known",
+      "name": "E2B",
+      "note": null
+    },
+    {
+      "id": "github.com/kagisearch",
+      "tier": "known",
+      "name": "Kagi",
+      "note": null
+    },
+    {
+      "id": "github.com/run-llama",
+      "tier": "known",
+      "name": "LlamaIndex",
+      "note": "LlamaCloud 与 LlamaIndex 所在组织"
+    },
+    {
+      "id": "github.com/inkdropapp",
+      "tier": "known",
+      "name": "Inkdrop",
+      "note": null
+    },
+    {
+      "id": "github.com/tinybirdco",
+      "tier": "known",
+      "name": "Tinybird",
+      "note": null
+    },
+    {
+      "id": "github.com/bitrefill",
+      "tier": "known",
+      "name": "Bitrefill",
+      "note": null
+    },
+    {
+      "id": "github.com/dojoengine",
+      "tier": "known",
+      "name": "Dojo Engine",
+      "note": null
+    },
+    {
+      "id": "github.com/ntropy-network",
+      "tier": "known",
+      "name": "Ntropy",
+      "note": null
+    },
+    {
+      "id": "github.com/Rootly-AI-Labs",
+      "tier": "known",
+      "name": "Rootly",
+      "note": null
+    },
+    {
+      "id": "github.com/OctagonAI",
+      "tier": "known",
+      "name": "Octagon AI",
+      "note": null
+    },
+    {
+      "id": "github.com/executeautomation",
+      "tier": "known",
+      "name": "ExecuteAutomation",
+      "note": null
+    },
+    {
+      "id": "github.com/settlemint",
+      "tier": "known",
+      "name": "SettleMint",
+      "note": null
+    },
+    {
+      "id": "github.com/skydeckai",
+      "tier": "known",
+      "name": "SkyDeck AI",
+      "note": "含 Rememberizer"
+    },
+    {
+      "id": "github.com/wanaku-ai",
+      "tier": "known",
+      "name": "Wanaku",
+      "note": null
+    },
+    {
+      "id": "github.com/wondershare-boop",
+      "tier": "known",
+      "name": "Wondershare",
+      "note": "万兴科技开源组织"
+    },
+    {
+      "id": "github.com/opensolon",
+      "tier": "known",
+      "name": "Solon",
+      "note": null
+    },
+    {
+      "id": "github.com/devflowinc",
+      "tier": "known",
+      "name": "Trieve",
+      "note": "Trieve 所在组织"
+    },
+    {
+      "id": "github.com/sendaifun",
+      "tier": "known",
+      "name": "SendAI",
+      "note": null
+    },
+    {
+      "id": "github.com/mendableai",
+      "tier": "known",
+      "name": "Firecrawl",
+      "note": "Firecrawl 所在组织"
+    },
+    {
+      "id": "github.com/firebase",
+      "tier": "known",
+      "name": "Firebase",
+      "note": null
+    },
+    {
+      "id": "github.com/the-ai-alliance",
+      "tier": "known",
+      "name": "AI Alliance",
+      "note": null
+    },
+    {
+      "id": "github.com/higress-group",
+      "tier": "known",
+      "name": "Higress",
+      "note": null
+    },
+    {
+      "id": "github.com/mongodb-developer",
+      "tier": "known",
+      "name": "MongoDB Developer",
+      "note": null
+    },
+    {
+      "id": "github.com/supabase-community",
+      "tier": "known",
+      "name": "Supabase Community",
+      "note": null
+    },
+    {
+      "id": "github.com/mastra-ai",
+      "tier": "known",
+      "name": "Mastra",
+      "note": null
+    },
+    {
+      "id": "github.com/turbot",
+      "tier": "known",
+      "name": "Turbot",
+      "note": "Steampipe 所在组织"
+    },
+    {
+      "id": "github.com/neuml",
+      "tier": "known",
+      "name": "NeuML",
+      "note": "txtai 所在组织"
+    },
+    {
+      "id": "github.com/basicmachines-co",
+      "tier": "known",
+      "name": "Basic Machines",
+      "note": null
+    },
+    {
+      "id": "github.com/centralmind",
+      "tier": "known",
+      "name": "CentralMind",
+      "note": null
+    },
+    {
+      "id": "github.com/metoro-io",
+      "tier": "known",
+      "name": "Metoro",
+      "note": null
+    },
+    {
+      "id": "github.com/fonoster",
+      "tier": "known",
+      "name": "Fonoster",
+      "note": null
+    },
+    {
+      "id": "github.com/openapi-ts",
+      "tier": "known",
+      "name": "OpenAPI TypeScript",
+      "note": null
+    },
+    {
+      "id": "github.com/aipotheosis-labs",
+      "tier": "known",
+      "name": "Aipotheosis Labs",
+      "note": "ACI.dev 所在组织"
+    },
+    {
+      "id": "github.com/agentrpc",
+      "tier": "known",
+      "name": "AgentRPC",
+      "note": null
+    },
+    {
+      "id": "github.com/trycua",
+      "tier": "known",
+      "name": "Cua",
+      "note": null
+    },
+    {
+      "id": "github.com/loglmhq",
+      "tier": "known",
+      "name": "LogLM",
+      "note": null
+    },
+    {
+      "id": "github.com/sionic-ai",
+      "tier": "known",
+      "name": "Sionic AI",
+      "note": null
+    },
+    {
+      "id": "github.com/springaialibaba",
+      "tier": "known",
+      "name": "Spring AI Alibaba",
+      "note": null
+    },
+    {
+      "id": "github.com/FoundationAgents",
+      "tier": "known",
+      "name": "Foundation Agents",
+      "note": "OpenManus 所在组织"
+    },
+    {
+      "id": "github.com/OpenAgentPlatform",
+      "tier": "known",
+      "name": "Open Agent Platform",
+      "note": "Dive 所在组织"
+    },
+    {
+      "id": "github.com/lakehq",
+      "tier": "known",
+      "name": "LakeSail",
+      "note": null
+    },
+    {
+      "id": "github.com/tadata-org",
+      "tier": "known",
+      "name": "Tadata",
+      "note": null
+    },
+    {
+      "id": "github.com/funmula-corp",
+      "tier": "known",
+      "name": "Funmula",
+      "note": null
+    },
+    {
+      "id": "github.com/usegranthq",
+      "tier": "known",
+      "name": "Grant",
+      "note": null
+    },
+    {
+      "id": "github.com/moonray",
+      "tier": "known",
+      "name": "MoonRay",
+      "note": null
+    }
+  ]
+}

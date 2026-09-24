@@ -1,4 +1,5 @@
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
+import { isOfficialPublisher } from "@cnmcp/schema";
 
 import { listRemoteServerIds, upsertServer } from "./db";
 import { fetchRegistryPage, type NormalizedRegistryServer } from "./registry";
@@ -34,7 +35,7 @@ export async function persistRegistryServers(env: CloudflareEnv, servers: Normal
       versionCount: Math.max(1, server.version ? 1 : 0),
       firstPublishedAt: server.publishedAt,
       lastPublishedAt: server.updatedAt ?? server.publishedAt,
-      isOfficial: server.isOfficial,
+      isOfficial: server.isOfficial || isOfficialPublisher(server.repoUrl),
       transport,
       homepage: server.homepage,
       remoteUrl: server.remotes[0]?.url ?? null,

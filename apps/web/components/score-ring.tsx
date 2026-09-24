@@ -1,6 +1,6 @@
 import type { Grade } from "@cnmcp/schema";
 
-import { GRADE_COLOR } from "@/lib/ui";
+import { GRADE_COLOR, GRADE_TEXT } from "@/lib/ui";
 
 const SIZES = {
   card: { r: 20, w: 4, fs: 17 },
@@ -20,10 +20,11 @@ export function ScoreRing({
   const { r, w, fs } = SIZES[size];
   const circumference = 2 * Math.PI * r;
   const box = (r + w) * 2;
-  const scored = score !== null && grade !== null;
-  const color = scored ? GRADE_COLOR[grade] : "var(--tx-3)";
+  const scored = score !== null;
+  const operational = scored && grade !== null;
+  const color = operational ? GRADE_COLOR[grade] : scored ? "var(--info)" : "var(--tx-3)";
   const offset = scored ? circumference * (1 - Math.max(0, Math.min(100, score)) / 100) : circumference;
-  const label = scored ? `Trust Score ${score}，${grade} 级` : "未实测";
+  const label = operational ? `动态验证 ${score}，${GRADE_TEXT[grade]}` : scored ? `公开证据完整度 ${score}` : "暂无证据评分";
 
   return (
     <svg width={box} height={box} viewBox={`0 0 ${box} ${box}`} role="img" aria-label={label}>

@@ -3,12 +3,9 @@ import Link from "next/link";
 
 import { fetchDirectory } from "@/lib/api";
 import { ServerCard } from "@/components/ui-blocks";
-import { PRICING } from "@/lib/ui";
+import { BUSINESS_CATEGORIES } from "@/lib/ui";
 
-type Search = { q?: string; grade?: string; reachable?: string; transport?: string; official?: string; pricing?: string; cursor?: string };
-
-const GRADES = ["A", "B", "C", "D"] as const;
-const PRICE_KEYS = ["free", "byok", "freemium", "subscription", "metered", "unknown"] as const;
+type Search = { q?: string; business?: string; reachable?: string; transport?: string; official?: string; verification?: string; sort?: string; cursor?: string };
 
 function hrefWith(params: Search, patch: Partial<Search>): string {
   const next = new URLSearchParams();
@@ -28,10 +25,11 @@ function toggle(params: Search, key: keyof Search, value: string): string {
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<Search> }): Promise<Metadata> {
   const params = await searchParams;
-  const filtered = Boolean(params.q || params.grade || params.reachable || params.transport || params.official || params.pricing);
+  const filtered = Boolean(params.q || params.business || params.reachable || params.transport || params.official || params.verification || params.sort);
   return {
-    title: "server 目录 — CNMCP",
-    description: "已完成至少一轮验证的 MCP server 目录。所有筛选不需要登录，也不排序付费内容。",
+    title: "MCP 服务目录",
+    description: "浏览中文 MCP 服务目录，按软件开发、数据分析、研究检索和内容创作等场景筛选，查看工具能力、来源与验证证据。",
+    alternates: { canonical: "/servers" },
     robots: filtered ? { index: false, follow: true } : undefined,
   };
 }
@@ -43,6 +41,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
     if (value) query.set(key, value);
   }
   if (!query.has("limit")) query.set("limit", "30");
+  if (!query.has("sort")) query.set("sort", "static");
 
   let items: Awaited<ReturnType<typeof fetchDirectory>>["items"] = [];
   let total = 0;
@@ -58,57 +57,63 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
   }
 
   const nextHref = nextCursor ? `${hrefWith(params, {})}${hrefWith(params, {}).includes("?") ? "&" : "?"}cursor=${nextCursor}` : null;
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.cnmcp.com";
+  const itemList = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "MCP 服务目录",
+    numberOfItems: total,
+    itemListElement: items.map((server, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: server.title,
+      url: `${site}/servers/${encodeURIComponent(server.id)}`,
+    })),
+  };
 
   return (
     <div className="wrap">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList) }} />
       <div className="page-hd">
-        <h1>server 目录</h1>
-        <p>{total ? `${total} 个已完成至少一轮验证。` : "收录与实测数据来自验证引擎。"}所有筛选不需要登录，也不排序付费内容。</p>
+        <h1>MCP 服务目录</h1>
+        <p>{total ? `${total} 个服务已进入验证流程。` : "收录与实测数据来自验证引擎。"}按你的业务需要筛选，再用公开证据判断是否适合接入。</p>
       </div>
       {error ? <p className="empty">{error}</p> : null}
       <div className="dir">
         <aside className="filters">
           <form className="fgroup" style={{ borderBottom: 0, paddingBottom: 16 }} action="/servers" method="get">
-            {params.grade ? <input type="hidden" name="grade" value={params.grade} /> : null}
+            {params.business ? <input type="hidden" name="business" value={params.business} /> : null}
             {params.reachable ? <input type="hidden" name="reachable" value={params.reachable} /> : null}
             {params.transport ? <input type="hidden" name="transport" value={params.transport} /> : null}
             {params.official ? <input type="hidden" name="official" value={params.official} /> : null}
-            {params.pricing ? <input type="hidden" name="pricing" value={params.pricing} /> : null}
-            <input className="dir-search" name="q" defaultValue={params.q ?? ""} placeholder="搜索名称 / 工具 / 命名空间" />
+            {params.verification ? <input type="hidden" name="verification" value={params.verification} /> : null}
+            {params.sort ? <input type="hidden" name="sort" value={params.sort} /> : null}
+            <input className="dir-search" name="q" defaultValue={params.q ?? ""} placeholder="搜索名称、工具或用途" type="search" />
           </form>
           <div className="fgroup">
-            <h4>
-              Trust 等级 <em>A/B/C/D</em>
-            </h4>
-            <div className="seg">
-              <Link className={!params.grade ? "on" : undefined} href={hrefWith(params, { grade: "" })}>
-                全部
+            <h4>业务场景</h4>
+            <div className="business-filter">
+              <Link className={!params.business ? "on" : undefined} href={hrefWith(params, { business: "" })}>
+                <span>全部场景</span>
+                <small>浏览所有服务</small>
               </Link>
-              {GRADES.map((grade) => (
-                <Link key={grade} className={params.grade === grade ? "on" : undefined} href={hrefWith(params, { grade })}>
-                  {grade}
+              {BUSINESS_CATEGORIES.map((category) => (
+                <Link key={category.id} className={params.business === category.id ? "on" : undefined} href={hrefWith(params, { business: category.id })}>
+                  <span>{category.label}</span>
+                  <small>{category.description}</small>
                 </Link>
               ))}
             </div>
           </div>
           <div className="fgroup">
-            <h4>定价模型</h4>
-            {PRICE_KEYS.map((model) => (
-              <Link key={model} className={`fopt${params.pricing === model ? " on" : ""}`} href={toggle(params, "pricing", model)}>
-                <span className="boxi" />
-                {PRICING[model].label}
-              </Link>
-            ))}
-          </div>
-          <div className="fgroup">
-            <h4>Transport</h4>
+            <h4>运行方式</h4>
             <Link className={`fopt${params.transport === "remote" ? " on" : ""}`} href={toggle(params, "transport", "remote")}>
               <span className="boxi" />
-              remote
+              远程服务
             </Link>
             <Link className={`fopt${params.transport === "local" ? " on" : ""}`} href={toggle(params, "transport", "local")}>
               <span className="boxi" />
-              local 未实测
+              本地运行
             </Link>
           </div>
           <div className="fgroup">
@@ -118,7 +123,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
               <span className="tg" />
             </Link>
             <Link className={`sw${params.official === "yes" ? " on" : ""}`} href={toggle(params, "official", "yes")}>
-              <span>仅看官方发布</span>
+              <span>仅看可信方发布</span>
               <span className="tg" />
             </Link>
           </div>
@@ -131,11 +136,29 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
         <div>
           <div className="toolbar">
             <span className="cnt">
-              <b>{items.length}</b> 个本页结果 · 共 {total} 个已验证
+              <b>{items.length}</b> 个本页结果 · 共 {total} 个目录条目
             </span>
-            <div className="r">
-              <span className="chip">按 Trust Score</span>
+            <div className="r dir-state-tabs" aria-label="验证状态筛选">
+              {[
+                ["", "全部"],
+                ["static", "证据已检查"],
+                ["dynamic", "已动态实测"],
+                ["incomplete", "待动态实测"],
+              ].map(([value, label]) => (
+                <Link key={value || "all"} className={`chip${(params.verification ?? "") === value ? " on" : ""}`} href={hrefWith(params, { verification: value })}>{label}</Link>
+              ))}
             </div>
+          </div>
+          <div className="sortbar">
+            <span>排序</span>
+            {[
+              ["static", "证据完整度"],
+              ["dynamic", "动态实测结果"],
+              ["recent", "最近验证"],
+              ["official", "可信方优先"],
+            ].map(([value, label]) => (
+              <Link key={value} className={(params.sort ?? "static") === value ? "on" : undefined} href={hrefWith(params, { sort: value })}>{label}</Link>
+            ))}
           </div>
           {items.length === 0 && !error ? (
             <div className="empty">

@@ -59,6 +59,23 @@ describe("trust score v1", () => {
     expect(result.components.probe.status).toBe("skip");
   });
 
+  it("scores a local package after a stdio handshake", () => {
+    const result = computeTrustScore({
+      transport: "local",
+      alive: { ok: true, protocolVersion: "2025-03-26", latencyMs: 400 },
+      toolsActual: [{ name: "fetch" }],
+      toolsClaimed: ["fetch"],
+      probe: { reachable: true, latencyMs: 400 },
+      lastPublishedAt: "2026-09-01T00:00:00.000Z",
+      versionCount: 1,
+      now: Date.parse("2026-09-21T00:00:00.000Z"),
+    });
+    expect(result.reason).toBe("scored");
+    expect(result.score).toBe(100);
+    expect(result.grade).toBe("A");
+    expect(result.components.probe.status).toBe("pass");
+  });
+
   it("partial contract match yields grade C on a live endpoint", () => {
     const result = computeTrustScore({
       transport: "remote",

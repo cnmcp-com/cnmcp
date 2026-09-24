@@ -2,22 +2,36 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { fetchDirectory, fetchServer, getPublicApiUrl } from "@/lib/api";
+import { fetchServer, getPublicApiUrl } from "@/lib/api";
 import { CopyConfig } from "@/components/copy-config";
 import { ScoreRing } from "@/components/score-ring";
-import { DetailTabs, ServerCard } from "@/components/ui-blocks";
-import { CHECKER_LABELS, GRADE_COLOR, GRADE_PILL, GRADE_TEXT, PRICING, PRICING_SOURCE, STATUS_UI, compactJson, formatDate, isPaidModel, reachLabel, sparkline, statusHint } from "@/lib/ui";
+import { DetailTabs } from "@/components/ui-blocks";
+import { readmeToBlocks } from "@cnmcp/schema";
+import { CHANGE_TYPE, CHECKER_LABELS, GRADE_COLOR, GRADE_PILL, GRADE_TEXT, STATUS_UI, compactJson, formatDate, reachLabel, sparkline, statusHint, transportLabel } from "@/lib/ui";
 
 type Props = { params: Promise<{ id: string }> };
+
+function isTencentCloudSource(value: string | null | undefined): boolean {
+  if (!value) return false;
+  try {
+    const host = new URL(value).hostname.toLowerCase();
+    return host === "cloud.tencent.com" || host.endsWith(".cloud.tencent.com") || host === "tencent-cloud.com" || host.endsWith(".tencent-cloud.com");
+  } catch {
+    return false;
+  }
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const server = await fetchServer(decodeURIComponent(id)).catch(() => null);
   if (!server) return { title: "未收录" };
-  const question = server.score === null ? "能用吗" : `安全吗 · ${server.grade ?? ""} ${server.score}`;
+  const title = `${server.title} MCP 服务：工具、配置与验证结果`;
+  const description = `${server.title} MCP 服务介绍、工具清单、公开来源、接入配置和验证结果。${server.description}`.slice(0, 160);
   return {
-    title: `${server.title} ${question} — CNMCP`,
-    description: `${server.title} 本站探测与 Trust Score。${server.description}`.slice(0, 160),
+    title,
+    description,
+    alternates: { canonical: `/servers/${encodeURIComponent(server.id)}` },
+    openGraph: { title, description, url: `/servers/${encodeURIComponent(server.id)}` },
   };
 }
 
@@ -27,13 +41,25 @@ export default async function ServerPage({ params }: Props) {
   if (!server) notFound();
   const latest = server.snapshots[0];
   const endpoint = server.endpoints[0];
-  const pricing = PRICING[server.pricing.model];
   const reach = reachLabel(server.transport, endpoint?.reachableProbe ?? server.reachableProbe);
   const hint = statusHint(server.status, server.score);
+  const displayScore = server.staticScore ?? server.score ?? null;
+  const displayGrade = server.staticScore != null ? null : server.grade;
+  const declaredTools = server.declaredTools ?? [];
+  const source = server.source ?? { author: null, iconUrl: null, srcUrl: null, srcSite: null, plazaUrl: null, categories: [], plazaCategories: [] };
+  const publicSourceUrl = source.srcUrl && !isTencentCloudSource(source.srcUrl) ? source.srcUrl : null;
+  const reliableConfig = server.reliableConfig ?? null;
+  const readmeBlocks = readmeToBlocks(server.readme?.body);
+  const sourceLabel = server.sourceLabel && server.sourceLabel !== "cloud.tencent.com" ? server.sourceLabel : null;
   const poisoned = server.tools.some((tool) => tool.poisoningFlags.length > 0);
-  const related = (await fetchDirectory("limit=8").catch(() => ({ items: [] as Awaited<ReturnType<typeof fetchDirectory>>["items"] }))).items.filter((item) => item.id !== server.id).slice(0, 4);
+  const declaredNames = new Set(declaredTools.map((tool) => tool.name));
+  const measuredNames = new Set(server.tools.map((tool) => tool.name));
+  const onlyDeclared = server.tools.length ? [...declaredNames].filter((name) => !measuredNames.has(name)) : [];
+  const onlyMeasured = server.tools.length ? [...measuredNames].filter((name) => !declaredNames.has(name)) : [];
+  const visibleChangeEvents = server.changeEvents.filter((event) => event.type !== "pricing_changed");
   const history = [...server.snapshots].reverse().map((snap) => snap.score);
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.cnmcp.com";
+  const pageUrl = `${site}/servers/${encodeURIComponent(server.id)}`;
   const badgeUrl = `${getPublicApiUrl()}/badge/${encodeURIComponent(server.id)}.svg`;
   const checkers = (["alive", "contract", "probe", "freshness"] as const).map((key) => {
     const component = latest?.components[key];
@@ -41,31 +67,62 @@ export default async function ServerPage({ params }: Props) {
     const ui = STATUS_UI[status];
     return { key, status, ui, component };
   });
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "首页", item: site },
+        { "@type": "ListItem", position: 2, name: "MCP 服务目录", item: `${site}/servers` },
+        { "@type": "ListItem", position: 3, name: server.title, item: pageUrl },
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: `${server.title} MCP 服务`,
+      description: server.description,
+      applicationCategory: "DeveloperApplication",
+      operatingSystem: "跨平台",
+      url: pageUrl,
+      codeRepository: server.repoUrl ?? undefined,
+      author: source.author ? { "@type": "Organization", name: source.author } : undefined,
+    },
+  ];
 
   return (
     <div className="wrap">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <div className="crumb">
-        <Link href="/">首页</Link>/<Link href="/servers">目录</Link>/<span>{server.namespace || server.id}</span>
+        <Link href="/">首页</Link>/<Link href="/servers">目录</Link>/<span>{server.title}</span>
       </div>
       <div className="dt-hd">
         <div className="dt-ring">
-          <ScoreRing score={server.score} grade={server.grade} size="detail" />
+          <ScoreRing score={displayScore} grade={displayGrade} size="detail" />
         </div>
-        <div className="dt-title">
-          <h1>
-            {server.title}
-            {server.grade ? <span className={`pill ${GRADE_PILL[server.grade]}`}>{server.grade} 级 · {GRADE_TEXT[server.grade]}</span> : <span className="pill p-gray">未实测</span>}
-            {poisoned || server.status === "dead" ? <span className="pill p-bad">{server.status === "dead" ? "失效 · 不建议接入" : "高危 · 不建议接入"}</span> : null}
-          </h1>
-          <div className="ns">{server.namespace || server.id} · 上次验证 {formatDate(server.verifiedAt)}</div>
-          <div className="dt-desc">{server.description || "暂无描述"}</div>
-          <div className="sc-tags" style={{ marginTop: 12 }}>
-            <span className={`pill ${pricing.pill}`}>{pricing.label}</span>
-            {server.isOfficial ? <span className="pill p-info">官方</span> : null}
-            <span className="chip mono">{server.transport}</span>
-            <span className="chip mono">{server.protocolVersion ?? "协议未知"}</span>
-            <span className="chip mono">{server.license ?? "许可证未知"}</span>
-            <span className={`pill ${reach.pill}`}>{reach.text}</span>
+        <div className="dt-ident">
+          <div className="dt-title">
+            <h1>
+              {server.title}
+              {server.staticScore != null ? <span className="pill p-info">证据完整度 {server.staticScore}</span> : null}
+              {server.grade ? <span className={`pill ${GRADE_PILL[server.grade]}`}>已实测 · {GRADE_TEXT[server.grade]}</span> : <span className="pill p-gray">待实测</span>}
+              {poisoned || server.status === "dead" ? <span className="pill p-bad">{server.status === "dead" ? "失效 · 不建议接入" : "高危 · 不建议接入"}</span> : null}
+            </h1>
+            <div className="ns">
+              {[sourceLabel, source.author && source.author !== sourceLabel ? source.author : null, `上次验证 ${formatDate(server.verifiedAt)}`].filter(Boolean).join(" · ")}
+            </div>
+            <div className="dt-desc">{server.description || "暂无描述"}</div>
+            <div className="sc-tags" style={{ marginTop: 12 }}>
+              {server.isOfficial ? <span className="pill p-info">可信方发布</span> : null}
+              {source.categories.map((category) => (
+                <span className="chip" key={category.id}>
+                  {category.name}
+                </span>
+              ))}
+              <span className="chip">{transportLabel(server.transport)}</span>
+              {server.protocolVersion ? <span className="chip mono">协议 {server.protocolVersion}</span> : null}
+              {server.transport === "remote" ? <span className={`pill ${reach.pill}`}>{reach.text}</span> : null}
+            </div>
           </div>
         </div>
         <div className="dt-act">
@@ -88,68 +145,84 @@ export default async function ServerPage({ params }: Props) {
                         {endpoint?.lastError ? <div style={{ fontSize: 12.5, color: "var(--tx-2)", marginTop: 2 }}>{endpoint.lastError}</div> : null}
                       </div>
                     ) : null}
-                    {isPaidModel(server.pricing.model) ? (
-                      <div className="warn-banner">
-                        <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--warn)" }}>这个 server 可能产生第三方费用</div>
-                        <div style={{ fontSize: 12.5, color: "var(--tx-2)", marginTop: 2 }}>
-                          计费方：{server.pricing.billingParty ?? "未知"}。接入前请确认额度。CNMCP 不代收。
-                        </div>
-                      </div>
-                    ) : null}
                     <div className="blk">
-                      <h3>定价与成本</h3>
-                      <div className="card" style={{ padding: 18 }}>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 14, flexWrap: "wrap" }}>
-                          <span className={`pill ${pricing.pill}`}>{pricing.label}</span>
-                          <span className="chip">来源：{PRICING_SOURCE[server.pricing.source] ?? "未知"}</span>
-                          {server.pricing.collectedAt ? <span className="chip">采集于 {formatDate(server.pricing.collectedAt)}</span> : null}
-                        </div>
-                        <div className="mgrid">
-                          <div>
-                            <dt>计费方</dt>
-                            <dd>{server.pricing.billingParty ?? "未知"}</dd>
-                          </div>
-                          <div>
-                            <dt>免费额度</dt>
-                            <dd>{server.pricing.freeQuota ?? "未声明"}</dd>
-                          </div>
-                          <div style={{ gridColumn: "1 / -1" }}>
-                            <dt>说明</dt>
-                            <dd>{server.pricing.detail ?? (server.pricing.model === "unknown" ? "定价未知 · 欢迎补充" : "—")}</dd>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="blk">
-                      <h3>元信息</h3>
+                      <h3>来源与接入信息</h3>
                       <dl className="mgrid">
-                        <div>
-                          <dt>许可证</dt>
-                          <dd className="mono" style={{ fontSize: 12.5 }}>{server.license ?? "未知"}</dd>
-                        </div>
-                        <div>
+                        {source.author ? <div>
+                          <dt>发布者</dt>
+                          <dd>{source.author}</dd>
+                        </div> : null}
+                        {source.categories.length ? <div>
+                          <dt>分类</dt>
+                          <dd>{source.categories.map((category) => category.name).join("、")}</dd>
+                        </div> : null}
+                        {publicSourceUrl ? <div>
+                          <dt>公开来源</dt>
+                          <dd>
+                            <a className="external-link" href={publicSourceUrl} target="_blank" rel="noopener noreferrer">
+                              {source.srcSite || "查看公开来源"} ↗
+                            </a>
+                          </dd>
+                        </div> : null}
+                        {server.repoUrl ? <div>
+                          <dt>代码仓库</dt>
+                          <dd><a className="external-link" href={server.repoUrl} target="_blank" rel="noopener noreferrer">访问公开仓库 ↗</a></dd>
+                        </div> : null}
+                        {server.protocolVersion ? <div>
                           <dt>协议版本</dt>
-                          <dd className="mono" style={{ fontSize: 12.5 }}>{server.protocolVersion ?? "未知"}</dd>
-                        </div>
+                          <dd className="mono" style={{ fontSize: 12.5 }}>{server.protocolVersion}</dd>
+                        </div> : null}
                         <div>
-                          <dt>Transport</dt>
-                          <dd className="mono" style={{ fontSize: 12.5 }}>{server.transport}</dd>
+                          <dt>运行方式</dt>
+                          <dd>{transportLabel(server.transport)}</dd>
                         </div>
-                        <div>
-                          <dt>仓库</dt>
-                          <dd>{server.repoUrl ?? "无（Registry 未提供）"}</dd>
-                        </div>
-                        <div>
-                          <dt>版本数</dt>
+                        {server.versionCount > 0 ? <div>
+                          <dt>已知版本</dt>
                           <dd className="mono">{server.versionCount}</dd>
-                        </div>
-                        <div>
-                          <dt>端点</dt>
-                          <dd className="mono" style={{ fontSize: 12.5 }}>{endpoint?.url ?? "本地 / 未知"}</dd>
-                        </div>
+                        </div> : null}
+                        {endpoint?.url ? <div>
+                          <dt>公开端点</dt>
+                          <dd className="mono endpoint-value">{endpoint.url}</dd>
+                        </div> : null}
                       </dl>
                     </div>
                   </>
+                ),
+              },
+              {
+                id: "doc",
+                label: "来源说明",
+                content: (
+                  <div className="blk">
+                    <h3>来源说明</h3>
+                    <p className="readme-note">以下内容整理自资源公开来源，仅优化排版，不改写原意。接入前请以项目仓库中的最新说明为准。</p>
+                    {readmeBlocks.length ? (
+                      <article className="readme">
+                        {readmeBlocks.map((block, index) => {
+                          if (block.type === "heading") return block.level === 1 ? <h4 key={index}>{block.text}</h4> : <h5 key={index}>{block.text}</h5>;
+                          if (block.type === "list") {
+                            return (
+                              <ul key={index}>
+                                {block.items.map((item) => (
+                                  <li key={item}>{item}</li>
+                                ))}
+                              </ul>
+                            );
+                          }
+                          if (block.type === "code") {
+                            return (
+                              <pre className="code" key={index}>
+                                {block.text}
+                              </pre>
+                            );
+                          }
+                          return <p key={index}>{block.text}</p>;
+                        })}
+                      </article>
+                    ) : (
+                      <div className="empty">来源未提供 README</div>
+                    )}
+                  </div>
                 ),
               },
               {
@@ -157,14 +230,14 @@ export default async function ServerPage({ params }: Props) {
                 label: "实测证据",
                 content: (
                   <div className="blk">
-                    <h3>v1 四项检查器 · 点击展开原始证据</h3>
-                    <p style={{ fontSize: 12.5, color: "var(--tx-2)", marginBottom: 14 }}>我们只展示实测返回值。v2 的投毒 / 认证 / 溯源 / 合规尚未计入分数，见方法论。</p>
+                    <h3>动态验证 · v1 四项检查器</h3>
+                    <p style={{ fontSize: 12.5, color: "var(--tx-2)", marginBottom: 14 }}>以下内容只展示协议握手与运行探测返回值，作为公开证据完整度的辅助信息。未覆盖项目明确标为未测。</p>
                     {checkers.map((item) => (
                       <details key={item.key} className="ev">
                         <summary>
                           <span className={`dot ${item.ui.dot}`} />
                           <span className="nm">{CHECKER_LABELS[item.key]}</span>
-                          <span className="cc">{item.component ? `${item.component.status} · ${item.component.score}` : "无快照"}</span>
+                          <span className="cc">{item.component ? `${item.ui.text} · ${item.component.score} 分` : "无动态快照"}</span>
                           <span className="cv">
                             <span className={`pill ${item.ui.pill}`}>{item.ui.text}</span>
                             <span className="ar">›</span>
@@ -184,30 +257,67 @@ export default async function ServerPage({ params }: Props) {
                 id: "tl",
                 label: "工具清单",
                 content: (
-                  <div className="blk">
-                    <h3>实测工具清单 · {server.tools.length} 个</h3>
-                    <p style={{ fontSize: 12.5, color: "var(--tx-2)", marginBottom: 14 }}>这是 tools/list 的真实返回，不是 README 里宣称的那份。</p>
-                    <div className="card">
-                      {server.tools.length ? (
-                        server.tools.map((tool) => (
-                          <div className="trow" key={tool.name}>
-                            <span className="tn">{tool.name}</span>
-                            <span className="td">{tool.description}</span>
-                            {tool.poisoningFlags.length ? <span className="pill p-bad">命中投毒</span> : null}
-                          </div>
+                  <>
+                    <div className="blk">
+                      <h3>来源声明工具 · {declaredTools.length} 个</h3>
+                      <p style={{ fontSize: 12.5, color: "var(--tx-2)", marginBottom: 14 }}>广场详情页声明的名称、描述、参数和 Schema。</p>
+                      {declaredTools.length ? (
+                        declaredTools.map((tool) => (
+                          <details key={tool.name} className="ev">
+                            <summary>
+                              <span className="tn">{tool.name}</span>
+                              <span className="cc">{tool.description || "无描述"}</span>
+                              <span className="cv">
+                                <span className="ar">›</span>
+                              </span>
+                            </summary>
+                            <div className="ev-b">
+                              {tool.parameters.length ? (
+                                <ul className="param-list">
+                                  {tool.parameters.map((param) => (
+                                    <li key={param.name}>
+                                      <span className="mono">{param.name}</span>
+                                      {param.type ? <span className="chip mono">{param.type}</span> : null}
+                                      {param.required ? <span className="chip">必填</span> : null}
+                                      {param.description ? <span>{param.description}</span> : null}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <div style={{ fontSize: 12.5, color: "var(--tx-3)", marginBottom: 8 }}>来源未提供参数</div>
+                              )}
+                              {tool.inputSchema ? <pre className="code" style={{ margin: "10px 0 0" }}>{compactJson(tool.inputSchema)}</pre> : null}
+                            </div>
+                          </details>
                         ))
                       ) : (
-                        <div style={{ padding: 26, textAlign: "center", color: "var(--tx-3)", fontSize: 13 }}>端点已失效或尚未实测，无工具返回</div>
+                        <div className="empty">来源未声明工具</div>
                       )}
                     </div>
-                    {server.claimedToolNames.length && server.claimedToolNames.length !== server.tools.length ? (
-                      <div className="diff" style={{ color: "var(--tx-2)" }}>
-                        <span className="del">README / 声称 {server.claimedToolNames.length} 个工具</span>
-                        <br />
-                        <span className="add">实测返回 {server.tools.length} 个</span>
+                    <div className="blk">
+                      <h3>本站实测工具 · {server.tools.length} 个</h3>
+                      <p style={{ fontSize: 12.5, color: "var(--tx-2)", marginBottom: 14 }}>本站握手 tools/list 的返回。尚未实测时这里为空。</p>
+                      <div className="card">
+                        {server.tools.length ? (
+                          server.tools.map((tool) => (
+                            <div className="trow" key={tool.name}>
+                              <span className="tn">{tool.name}</span>
+                              <span className="td">{tool.description}</span>
+                              {tool.poisoningFlags.length ? <span className="pill p-bad">命中投毒</span> : null}
+                            </div>
+                          ))
+                        ) : (
+                          <div style={{ padding: 26, textAlign: "center", color: "var(--tx-3)", fontSize: 13 }}>尚未实测，无工具返回</div>
+                        )}
                       </div>
-                    ) : null}
-                  </div>
+                      {onlyDeclared.length || onlyMeasured.length ? (
+                        <div className="diff" style={{ color: "var(--tx-2)" }}>
+                          {onlyDeclared.length ? <div>仅来源声明：{onlyDeclared.join("、")}</div> : null}
+                          {onlyMeasured.length ? <div>仅本站实测：{onlyMeasured.join("、")}</div> : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  </>
                 ),
               },
               {
@@ -217,7 +327,7 @@ export default async function ServerPage({ params }: Props) {
                   <div className="blk">
                     <h3>本站探测可达</h3>
                     <div className="node-c">
-                      <div className="cn">CNMCP Worker 出口</div>
+                      <div className="cn">本站探测节点</div>
                       <div className="cv" style={{ color: reach.pill === "p-ok" ? "var(--tx)" : reach.pill === "p-bad" ? "var(--bad)" : "var(--tx-3)" }}>
                         {endpoint?.latencyMs != null ? (
                           <>
@@ -229,7 +339,7 @@ export default async function ServerPage({ params }: Props) {
                         )}
                       </div>
                       <div className="bar">
-                        <i style={{ width: endpoint?.reachableProbe ? "72%" : "100%", background: endpoint?.reachableProbe ? "var(--ok)" : "var(--bad)" }} />
+                        <i style={{ width: endpoint?.reachableProbe === true ? "72%" : endpoint?.reachableProbe === false ? "100%" : "0", background: endpoint?.reachableProbe === true ? "var(--ok)" : endpoint?.reachableProbe === false ? "var(--bad)" : "var(--tx-3)" }} />
                       </div>
                     </div>
                     <pre className="code" style={{ marginTop: 14 }}>
@@ -251,13 +361,13 @@ export default async function ServerPage({ params }: Props) {
                   <div className="blk">
                     <h3>变更历史</h3>
                     <pre className="code" style={{ marginBottom: 18 }}>
-                      {`Trust Score 走势\n${sparkline(history)}\n${history.map((value) => (value === null ? "—" : String(value))).join("  →  ")}`}
+                      {`安全评估走势\n${sparkline(history)}\n${history.map((value) => (value === null ? "—" : String(value))).join("  →  ")}`}
                     </pre>
                     <div className="tl">
-                      {server.changeEvents.length ? (
-                        server.changeEvents.map((event, index) => (
+                      {visibleChangeEvents.length ? (
+                        visibleChangeEvents.map((event, index) => (
                           <div className={`tl-i${event.severity === "high" ? " red" : ""}`} key={`${event.detectedAt}-${index}`}>
-                            <div className="t1">{event.type}</div>
+                            <div className="t1">{CHANGE_TYPE[event.type] ?? event.type}</div>
                             <div className="t2">{formatDate(event.detectedAt)}</div>
                             <pre className="diff">{compactJson(event.diff)}</pre>
                           </div>
@@ -269,24 +379,6 @@ export default async function ServerPage({ params }: Props) {
                         </div>
                       )}
                     </div>
-                  </div>
-                ),
-              },
-              {
-                id: "rel",
-                label: "同类推荐",
-                content: (
-                  <div className="blk">
-                    <h3>同类推荐</h3>
-                    {related.length ? (
-                      <div className="sc-grid">
-                        {related.map((item) => (
-                          <ServerCard key={item.id} server={item} />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="empty">暂无其它已验证条目</div>
-                    )}
                   </div>
                 ),
               },
@@ -303,10 +395,10 @@ export default async function ServerPage({ params }: Props) {
             </div>
           ) : (
             <>
-              <CopyConfig server={server} />
+              <CopyConfig config={reliableConfig} declaredCount={declaredTools.length} measuredCount={server.tools.length} />
               {server.grade && server.score !== null ? (
                 <div className="rail-c">
-                  <h4>可信徽章</h4>
+                  <h4>安全状态徽章</h4>
                   <div className="badge-pv">
                     <span
                       style={{
@@ -324,7 +416,7 @@ export default async function ServerPage({ params }: Props) {
                       }}
                     >
                       <span style={{ width: 6, height: 6, borderRadius: "50%", background: GRADE_COLOR[server.grade] }} />
-                      CNMCP {server.grade} · {server.score}
+                      {GRADE_TEXT[server.grade]} · {server.score}
                     </span>
                   </div>
                   <div style={{ padding: "10px 14px", borderTop: "1px solid var(--border)" }}>

@@ -1,5 +1,13 @@
+import type { Metadata } from "next";
+
 import { DoctorPanel } from "@/components/doctor-panel";
 import { getPublicApiUrl } from "@/lib/api";
+
+export const metadata: Metadata = {
+  title: "MCP 配置体检",
+  description: "在浏览器本地检查 MCP 配置中的明文凭证、未加密连接、可变依赖、宽泛权限和失效服务，配置不上传。",
+  alternates: { canonical: "/doctor" },
+};
 
 export default function DoctorPage() {
   return (
@@ -7,7 +15,7 @@ export default function DoctorPage() {
       <div className="page-hd">
         <h1>配置体检</h1>
         <p>
-          粘贴你的 <span className="mono" style={{ fontSize: 13 }}>mcp.json</span>，在浏览器里解析，找出明文密钥、失效端点和本站探测不可达的 server。
+          粘贴你的 <span className="mono" style={{ fontSize: 13 }}>mcp.json</span>，检查明文密钥、未加密连接、可变依赖、宽泛权限与目录验证状态。
         </p>
       </div>
       <div className="priv">

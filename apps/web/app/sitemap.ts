@@ -7,18 +7,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: site, changeFrequency: "hourly", priority: 1 },
     { url: `${site}/servers`, changeFrequency: "hourly", priority: 0.95 },
-    { url: `${site}/methodology`, changeFrequency: "monthly", priority: 0.8 },
     { url: `${site}/report`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${site}/doctor`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${site}/news`, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${site}/methodology`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${site}/submit`, changeFrequency: "monthly", priority: 0.5 },
   ];
   try {
-    const directory = await fetchDirectory("limit=50");
+    const servers: Awaited<ReturnType<typeof fetchDirectory>>["items"] = [];
+    let cursor: string | null = null;
+    for (let page = 0; page < 40; page += 1) {
+      const query = new URLSearchParams({ limit: "50" });
+      if (cursor) query.set("cursor", cursor);
+      const directory = await fetchDirectory(query.toString());
+      servers.push(...directory.items);
+      cursor = directory.nextCursor;
+      if (!cursor) break;
+    }
     return [
       ...staticRoutes,
-      ...directory.items.map((server) => ({
+      ...servers.map((server) => ({
         url: `${site}/servers/${encodeURIComponent(server.id)}`,
         changeFrequency: "daily" as const,
         priority: 0.9,
+        lastModified: server.verifiedAt ?? server.lastPublishedAt ?? undefined,
       })),
     ];
   } catch {

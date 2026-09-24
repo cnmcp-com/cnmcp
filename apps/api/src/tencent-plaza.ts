@@ -1,6 +1,10 @@
-import type { PricingModel, Transport } from "@cnmcp/schema";
+import { isOfficialPublisher, type DeclaredTool, type PricingModel, type ReliableConfig, type SourceInfo, type Transport } from "@cnmcp/schema";
+import { checkCatalogServer, type StaticCatalogCheck, type StaticCatalogInput } from "@cnmcp/checkers";
 
-import { upsertServer } from "./db";
+import { replacePlazaFacts, upsertServer, upsertStaticCheck } from "./db";
+import { declaredToolsFromSources, extractReliableConfig, httpUrl, isLikelyMcpEndpoint } from "./plaza-normalize";
+
+export { isLikelyMcpEndpoint };
 
 export const TENCENT_PLAZA_SOURCE = "tencent-mcp-plaza";
 export const TENCENT_PLAZA_URL = "https://cloud.tencent.com/developer/mcp";
@@ -48,6 +52,8 @@ export type PlazaCatalogServer = {
   cnmcpCategories?: CnmcpCategoryRef[];
   claimedToolNames: string[];
   tools?: PlazaTool[];
+  declaredTools?: DeclaredTool[];
+  reliableConfig?: ReliableConfig | null;
   samplePrompts?: string[];
   install?: { env: string[]; headers: string[] };
   authParams: PlazaAuthParam[];
@@ -121,29 +127,6 @@ export function inferTransport(input: {
   return "local";
 }
 
-export function isLikelyMcpEndpoint(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    if (!/^https?:$/.test(parsed.protocol)) return false;
-    if (parsed.username || parsed.password) return false;
-    const host = parsed.hostname.toLowerCase();
-    if (host === "localhost" || host.endsWith(".local") || host === "::1" || host === "0.0.0.0" || host === "::") return false;
-    if (host.includes("xn--") || /[^\u0000-\u007F]/.test(url)) return false;
-    if (/^(127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(host)) return false;
-    if (host.startsWith("::ffff:")) return false;
-    if (/[^\u0000-\u007F]/.test(host)) return false;
-    if (/your[-_.]|example|placeholder|changeme|insert[-_]?here/i.test(host)) return false;
-    if (/(^|\.)(github\.com|githubusercontent\.com|gitlab\.com|bitbucket\.org|news\.ycombinator\.com)$/i.test(host)) return false;
-    if (/[?&](api[_-]?key|token|secret|access[_-]?key|authorization)=/i.test(parsed.search)) return false;
-    const path = parsed.pathname.toLowerCase();
-    if (/\.(md|html?|png|jpe?g|svg|json)$/i.test(path)) return false;
-    if (/readme|swagger|petstore/i.test(`${host}${path}`)) return false;
-    return /\/mcp(\/|$)/i.test(path) || /\/sse(\/|$)/i.test(path) || /(^|\.)mcp[.-]/i.test(host) || host.includes("mcp.");
-  } catch {
-    return false;
-  }
-}
-
 export function extractRemotesFromReadme(readme: string | null | undefined): Array<{ type: string; url: string }> {
   if (!readme) return [];
   const found = new Map<string, { type: string; url: string }>();
@@ -171,9 +154,67 @@ export function shouldPersistPlazaServer(server: PlazaCatalogServer): boolean {
   return Boolean(server.repoUrl) || server.isOfficial;
 }
 
+export function sourceInfoOf(server: PlazaCatalogServer): SourceInfo {
+  const plazaCategories = (server.plazaCategories ?? server.categories ?? []).filter(
+    (item) => typeof item.categoryId === "number" && Boolean(item.name),
+  );
+  return {
+    author: server.srcAuthor?.trim() || null,
+    iconUrl: httpUrl(server.iconUrl),
+    srcUrl: httpUrl(server.srcUrl) ?? httpUrl(server.repoUrl),
+    srcSite: server.srcSite?.trim() || null,
+    plazaUrl: httpUrl(server.plazaUrl) ?? httpUrl(server.homepage),
+    categories: (server.cnmcpCategories ?? []).filter((item) => item.id && item.name),
+    plazaCategories,
+  };
+}
+
+export function declaredToolsOf(server: PlazaCatalogServer): DeclaredTool[] {
+  const tools = server.declaredTools?.length ? server.declaredTools : declaredToolsFromSources({ tools: server.tools ?? [] });
+  const seen = new Set<string>();
+  return tools.filter((tool) => {
+    if (!tool.name || seen.has(tool.name)) return false;
+    seen.add(tool.name);
+    return true;
+  });
+}
+
+export function reliableConfigOf(server: PlazaCatalogServer): ReliableConfig | null {
+  if ("reliableConfig" in server) return server.reliableConfig ?? null;
+  return extractReliableConfig({ remotes: server.remotes, serverKey: server.mcpName || server.name });
+}
+
+export function staticCheckInputOf(
+  server: PlazaCatalogServer,
+  readme: string | null = null,
+  isOfficial = server.isOfficial,
+): StaticCatalogInput {
+  return {
+    id: server.id,
+    transport: server.transport,
+    repoUrl: server.repoUrl,
+    reliability: server.reliability ?? null,
+    isOfficial,
+    pricingModel: server.pricingModel,
+    lastPublishedAt: server.lastPublishedAt,
+    tools: declaredToolsOf(server),
+    reliableConfig: reliableConfigOf(server),
+    authParams: server.authParams,
+    install: server.install ?? { env: [], headers: [] },
+    readme,
+  };
+}
+
+export function staticCheckOf(input: StaticCatalogInput, checkedAt: string): StaticCatalogCheck {
+  const parsed = Date.parse(checkedAt);
+  return checkCatalogServer(input, Number.isFinite(parsed) ? parsed : Date.now());
+}
+
 function claimedNamesOf(server: PlazaCatalogServer): string[] {
+  const declared = declaredToolsOf(server);
+  if (declared.length) return declared.map((item) => item.name);
   if (Array.isArray(server.claimedToolNames) && server.claimedToolNames.length) return server.claimedToolNames;
-  return (server.tools ?? []).map((item) => item.name).filter(Boolean);
+  return [];
 }
 
 export async function persistPlazaCatalog(env: CloudflareEnv, catalog: PlazaCatalog): Promise<{ upserted: number; queued: 0; skipped: number }> {
@@ -184,6 +225,7 @@ export async function persistPlazaCatalog(env: CloudflareEnv, catalog: PlazaCata
       skipped += 1;
       continue;
     }
+    const isOfficial = server.isOfficial || isOfficialPublisher(server.srcUrl ?? server.repoUrl);
     await upsertServer(env.DB, {
       id: server.id,
       title: server.title,
@@ -194,7 +236,7 @@ export async function persistPlazaCatalog(env: CloudflareEnv, catalog: PlazaCata
       versionCount: 1,
       firstPublishedAt: server.firstPublishedAt,
       lastPublishedAt: server.lastPublishedAt,
-      isOfficial: server.isOfficial,
+      isOfficial,
       transport: server.transport,
       homepage: server.homepage,
       remoteUrl: server.remotes.find((item) => isLikelyMcpEndpoint(item.url))?.url ?? null,
@@ -210,6 +252,15 @@ export async function persistPlazaCatalog(env: CloudflareEnv, catalog: PlazaCata
         .bind(server.id, server.pricingModel, catalog.crawledAt)
         .run();
     }
+    await replacePlazaFacts(env.DB, {
+      serverId: server.id,
+      source: sourceInfoOf(server),
+      declaredTools: declaredToolsOf(server),
+      reliableConfig: reliableConfigOf(server),
+      collectedAt: catalog.crawledAt,
+    });
+    const readme = await env.DB.prepare(`SELECT body FROM server_readmes WHERE server_id = ?`).bind(server.id).first<{ body: string }>();
+    await upsertStaticCheck(env.DB, staticCheckOf(staticCheckInputOf(server, readme?.body ?? null, isOfficial), catalog.crawledAt), catalog.crawledAt);
     upserted += 1;
   }
   return { upserted, queued: 0, skipped };

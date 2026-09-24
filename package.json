@@ -16,7 +16,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "crawl:tencent-plaza": "node scripts/tencent-plaza/crawl.mjs"
+    "crawl:tencent-plaza": "node scripts/tencent-plaza/crawl.mjs",
+    "check:tencent-plaza": "node --experimental-strip-types packages/checkers/bin/check-tencent-plaza.mjs"
   },
   "engines": {
     "node": ">=22"

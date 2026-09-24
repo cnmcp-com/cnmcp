@@ -1,13 +1,14 @@
 import { Hono } from "hono";
 
-import { ALGORITHM_VERSION } from "@cnmcp/schema";
+import { ALGORITHM_VERSION, type ReliableConfig } from "@cnmcp/schema";
 
 import { renderBadge } from "./badge";
-import { getDirectory, getServerDetail, getStats, listDueServerIds } from "./db";
+import { getDirectory, getRecentActivity, getServerDetail, getStats, listDueServerIds, listProbeQueue, upsertReadmes } from "./db";
 import { IngestWorkflow, ingestPages } from "./ingest";
 import { buildCatalogIndex, putCatalogIndex } from "./index-file";
+import { scanGitHubRepositories } from "./github-scan";
 import { persistPlazaCatalog, type PlazaCatalog } from "./tencent-plaza";
-import { verifyServer } from "./verify";
+import { stdioHandshakeOf, verifyServer } from "./verify";
 
 export { IngestWorkflow };
 
@@ -33,6 +34,18 @@ app.use("*", async (c, next) => {
   await next();
 });
 
+app.use("/internal/*", async (c, next) => {
+  const expected = c.env.INTERNAL_API_TOKEN;
+  const provided = c.req.header("Authorization");
+  if (!expected) {
+    return c.json({ error: { code: "NOT_CONFIGURED", message: "内部接口尚未配置" } }, 503);
+  }
+  if (provided !== `Bearer ${expected}`) {
+    return c.json({ error: { code: "UNAUTHORIZED", message: "无权访问内部接口" } }, 401);
+  }
+  await next();
+});
+
 app.get("/health", (c) => c.json({ ok: true, algorithmVersion: ALGORITHM_VERSION }));
 
 app.get("/v1/stats", async (c) => {
@@ -44,15 +57,23 @@ app.get("/v1/servers", async (c) => {
   const url = new URL(c.req.url);
   const result = await getDirectory(c.env.DB, {
     q: url.searchParams.get("q") ?? "",
+    business: url.searchParams.get("business") ?? "",
     grade: (url.searchParams.get("grade") ?? "") as never,
     reachable: (url.searchParams.get("reachable") ?? "") as never,
     transport: (url.searchParams.get("transport") ?? "") as never,
     official: (url.searchParams.get("official") ?? "") as never,
     pricing: (url.searchParams.get("pricing") ?? "") as never,
+    verification: (url.searchParams.get("verification") ?? "") as never,
+    sort: (url.searchParams.get("sort") ?? "") as never,
     cursor: url.searchParams.get("cursor") ?? "",
     limit: Number(url.searchParams.get("limit") ?? "30"),
   });
   return c.json(result);
+});
+
+app.get("/v1/activity", async (c) => {
+  const limit = Number(c.req.query("limit") ?? "30");
+  return c.json({ items: await getRecentActivity(c.env.DB, limit) });
 });
 
 app.get("/v1/servers/:id", async (c) => {
@@ -92,6 +113,21 @@ app.post("/v1/submissions", async (c) => {
   if (!body?.endpoint && !body?.namespace) {
     return c.json({ error: { code: "INVALID", message: "需要 endpoint 或 namespace" } }, 400);
   }
+  const allowedTypes = new Set(["new_server", "claim", "appeal", "rule", "opt_out"]);
+  if (body.type && !allowedTypes.has(body.type)) {
+    return c.json({ error: { code: "INVALID", message: "不支持的提交类型" } }, 400);
+  }
+  if (body.endpoint) {
+    try {
+      const endpoint = new URL(body.endpoint);
+      if (endpoint.protocol !== "http:" && endpoint.protocol !== "https:") throw new Error("protocol");
+    } catch {
+      return c.json({ error: { code: "INVALID", message: "endpoint 必须是完整的 http 或 https URL" } }, 400);
+    }
+  }
+  if ((body.note?.length ?? 0) > 2000) {
+    return c.json({ error: { code: "INVALID", message: "说明不能超过 2000 字" } }, 400);
+  }
   const id = crypto.randomUUID();
   await c.env.DB.prepare(
     `INSERT INTO submissions (id, type, payload, status, submitted_at) VALUES (?, ?, ?, 'queued', ?)`,
@@ -116,10 +152,28 @@ app.post("/internal/ingest-plaza", async (c) => {
   return c.json(result);
 });
 
+app.post("/internal/ingest-readmes", async (c) => {
+  const body = await c.req.json<{ readmes?: Array<{ serverId?: string; body?: string; collectedAt?: string; reliableConfig?: ReliableConfig | null }> }>().catch(() => null);
+  const readmes = (body?.readmes ?? []).flatMap((item) => {
+    if (!item.serverId || !item.body) return [];
+    const config = item.reliableConfig;
+    const reliableConfig = config && (config.source === "readme" || config.source === "remote") ? config : null;
+    return [{ serverId: item.serverId, body: item.body, collectedAt: item.collectedAt || new Date().toISOString(), reliableConfig }];
+  });
+  if (!readmes.length) return c.json({ error: { code: "INVALID", message: "需要 readmes" } }, 400);
+  return c.json(await upsertReadmes(c.env.DB, readmes));
+});
+
+app.get("/internal/probe-queue", async (c) => {
+  const transport = c.req.query("transport") === "local" ? "local" : "remote";
+  const limit = Math.min(1000, Math.max(1, Number(c.req.query("limit") ?? "20")));
+  return c.json({ transport, ids: await listProbeQueue(c.env.DB, transport, limit) });
+});
+
 app.post("/internal/verify", async (c) => {
-  const body = await c.req.json<{ serverId?: string }>().catch(() => null);
+  const body = await c.req.json<{ serverId?: string; stdioHandshake?: unknown }>().catch(() => null);
   if (!body?.serverId) return c.json({ error: { code: "INVALID", message: "serverId required" } }, 400);
-  const result = await verifyServer(c.env, body.serverId);
+  const result = await verifyServer(c.env, body.serverId, stdioHandshakeOf(body.stdioHandshake));
   return c.json(result);
 });
 
@@ -138,6 +192,8 @@ export default {
         if (due.length && env.VERIFY_QUEUE) {
           await env.VERIFY_QUEUE.sendBatch(due.map((serverId) => ({ body: { serverId } })));
         }
+        const github = await scanGitHubRepositories(env);
+        console.log(JSON.stringify({ path: "scheduled-github-scan", ...github }));
       })(),
     );
   },
