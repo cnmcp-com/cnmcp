@@ -9,7 +9,7 @@ CNMCP 使用 GitHub Actions 发布两个 Cloudflare Workers：
 
 ## Cloudflare 配置
 
-1. 确认域名 `cnmcp.com` 已接入当前 Cloudflare 账户。首次发布会按 Wrangler 配置创建 `api.cnmcp.com` 与 `www.cnmcp.com` Custom Domain、DNS 记录和证书。当前 `www.cnmcp.com` 仍在提供旧站内容，切换前需要从旧 Pages 项目解绑该域名；若主机名还有 CNAME 或同名 Worker 路由，也要先删除冲突项。
+1. 确认域名 `cnmcp.com` 已接入当前 Cloudflare 账户。API 会按 Wrangler 配置创建 `api.cnmcp.com` Custom Domain；网站先发布到 `cnmcp-web` 的 `workers.dev` 地址。当前 `www.cnmcp.com` 仍在提供旧站内容，上线切换时需要先从旧 Pages 项目解绑该域名并删除冲突的 A/CNAME 记录，再到 `cnmcp-web` 的 Settings → Domains & Routes 添加 `www.cnmcp.com` Custom Domain。
 2. 保留已创建的 D1 数据库 `cnmcp`（ID `a648e64c-8857-4efe-90bb-20d4eb715698`）。不要新建同名空库。
 3. 确认 R2 bucket `cnmcp-evidence`、Queue `cnmcp-verify` 已存在。Wrangler 会部署 Worker 和 Workflow，但不会替你迁移已有对象数据。
 4. 在 `cnmcp-api` Worker 中配置两个 Secret：
@@ -42,6 +42,6 @@ npx wrangler secret put GITHUB_TOKEN
 1. `CI` 对提交执行测试、类型检查和两个 Worker 的生产构建。
 2. `Deploy / api` 应用未执行的 D1 迁移；D1 会在迁移前自动创建备份，单个失败迁移会回滚。
 3. API 发布并通过 `https://api.cnmcp.com/health` 检查。
-4. 网站发布并通过 `https://www.cnmcp.com` 检查。
+4. 网站先发布到 `workers.dev`；完成 `www.cnmcp.com` 域名切换后，再进行公开地址检查。
 
 若网站发布失败，API 与已经成功的 D1 迁移不会回滚。修复后重新运行 `Deploy` 即可；迁移命令只应用尚未执行的文件。

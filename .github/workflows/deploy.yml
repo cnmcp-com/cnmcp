@@ -52,7 +52,6 @@ jobs:
     timeout-minutes: 30
     environment:
       name: production
-      url: https://www.cnmcp.com
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -79,5 +78,3 @@ jobs:
       - name: Deploy Web Worker
         working-directory: apps/web
         run: npx wrangler deploy
-      - name: Verify website
-        run: node scripts/smoke-deployment.mjs https://www.cnmcp.com web
