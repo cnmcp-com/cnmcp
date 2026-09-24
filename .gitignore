@@ -31,3 +31,5 @@ scripts/
 scripts/*
 !scripts/check-cloudflare-prerequisites.mjs
 !scripts/smoke-deployment.mjs
+!scripts/tencent-plaza/
+!scripts/tencent-plaza/**
