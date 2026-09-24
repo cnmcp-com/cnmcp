@@ -21,6 +21,11 @@ admin/
 
 .tmp-mcp*
 data/
+!data/
+data/*
+!data/tencent-plaza/
+data/tencent-plaza/*
+!data/tencent-plaza/category-map.json
 
 .idea/
 .vscode/

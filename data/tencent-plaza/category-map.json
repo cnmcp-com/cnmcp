@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "cnmcpCategories": [
+    { "id": "devops", "name": "开发工具", "description": "云资源、IDE、CI/CD、代码分析与基础设施" },
+    { "id": "search", "name": "搜索检索", "description": "网页、企业与垂直搜索" },
+    { "id": "database", "name": "数据库", "description": "数据库、对象存储、网盘与文件" },
+    { "id": "payments", "name": "支付与交易", "description": "支付、交易与电商接口" },
+    { "id": "crypto", "name": "金融加密", "description": "加密、钱包与链上查询" },
+    { "id": "maps", "name": "地图出行", "description": "地图、位置与出行" },
+    { "id": "collab", "name": "企业协作", "description": "会议、IM、研发协作与办公流" },
+    { "id": "query", "name": "数据查询", "description": "工商、企业与公开数据查询" },
+    { "id": "social", "name": "社交媒体", "description": "社交平台、直播与内容分发" },
+    { "id": "design", "name": "设计与创意", "description": "设计系统、原型与创意生成" },
+    { "id": "docs", "name": "文档工具", "description": "在线文档、Office 与知识库" },
+    { "id": "browser", "name": "浏览器自动化", "description": "浏览器控制、页面操作与测试" },
+    { "id": "scraping", "name": "内容抓取", "description": "网页抓取、解析与转写" },
+    { "id": "other", "name": "其他", "description": "尚未归入以上类目" }
+  ],
+  "plazaMapping": [
+    { "plazaId": 101, "plazaName": "开发者工具", "cnmcpIds": ["devops"] },
+    { "plazaId": 106, "plazaName": "搜索与信息检索", "cnmcpIds": ["search"] },
+    { "plazaId": 105, "plazaName": "数据库与文件", "cnmcpIds": ["database"] },
+    { "plazaId": 107, "plazaName": "支付与交易", "cnmcpIds": ["payments"] },
+    { "plazaId": 108, "plazaName": "位置服务", "cnmcpIds": ["maps"] },
+    { "plazaId": 109, "plazaName": "社交媒体", "cnmcpIds": ["social"] },
+    { "plazaId": 110, "plazaName": "设计与创意", "cnmcpIds": ["design"] },
+    { "plazaId": 111, "plazaName": "文档工具", "cnmcpIds": ["docs"] },
+    { "plazaId": 104, "plazaName": "浏览器自动化", "cnmcpIds": ["browser"] },
+    { "plazaId": 112, "plazaName": "内容抓取", "cnmcpIds": ["scraping"] },
+    { "plazaId": 113, "plazaName": "其他", "cnmcpIds": ["other"] },
+    { "plazaId": 100, "plazaName": "腾讯产品MCP", "cnmcpIds": [], "note": "不作为独立类目；有其他广场类目则跟那些类目，否则按腾讯产品规则打散，云产品默认开发工具" }
+  ],
+  "tencentProductRules": [
+    { "pattern": "位置|地图|LBS|出行|滴滴", "cnmcpId": "maps" },
+    { "pattern": "文档|乐享", "cnmcpId": "docs" },
+    { "pattern": "会议|TAPD|企微", "cnmcpId": "collab" },
+    { "pattern": "企查查|工商|企业信息", "cnmcpId": "query" },
+    { "pattern": "加密|钱包|crypto|bitcoin|区块链", "cnmcpId": "crypto" },
+    { "pattern": "TDesign|Ardot|设计", "cnmcpId": "design" },
+    { "pattern": "搜索|元宝", "cnmcpId": "search" },
+    { "pattern": "数据库|MySQL|Redis|Mongo|Postgre|COS|对象存储|Elastic|\\bES\\b", "cnmcpId": "database" },
+    { "pattern": ".", "cnmcpId": "devops", "note": "腾讯云产品默认归开发工具" }
+  ]
+}
