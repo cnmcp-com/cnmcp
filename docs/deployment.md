@@ -15,7 +15,9 @@ CNMCP 使用 GitHub Actions 发布两个 Cloudflare Workers：
 4. 在 `cnmcp-api` Worker 中配置两个 Secret：
    - `INTERNAL_API_TOKEN`：至少 32 字节的随机值；所有 `/internal/*` 请求使用 `Authorization: Bearer <token>`。
    - `GITHUB_TOKEN`：建议使用只读 GitHub fine-grained token，仅需读取公开仓库元数据，用于提高定期变更扫描的 API 限额。
-5. 创建一个用于 GitHub Actions 的 Cloudflare API Token，并只授权当前账户/zone。至少需要 Workers Scripts、Workers Routes、D1、Queues、R2 的编辑权限，以及账户和 zone 的读取权限。
+5. 创建一个用于 GitHub Actions 的 Cloudflare API Token，并只授权当前账户/zone。至少需要 Workers Scripts、Workers Routes、Containers、D1、Queues、R2 的编辑权限，以及账户和 zone 的读取权限。
+
+API Worker 同时部署 `StdioProbeContainer` 镜像。发布环境需要 Docker，并且 Cloudflare Token 必须允许发布 Containers 及其镜像。部署后先保持 `STDIO_PROBE_ENABLED=false`，按照 [stdio 探测 MVP](./stdio-containers-mvp.md) 完成单项目和分批灰度，再开启定时任务。
 
 本地设置 Worker Secret：
 

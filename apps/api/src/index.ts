@@ -9,8 +9,10 @@ import { buildCatalogIndex, putCatalogIndex } from "./index-file";
 import { scanGitHubRepositories } from "./github-scan";
 import { persistPlazaCatalog, type PlazaCatalog } from "./tencent-plaza";
 import { stdioHandshakeOf, verifyServer } from "./verify";
+import { enqueueStdioProbes, listDueStdioProbeIds, runCloudStdioProbe } from "./stdio-probe";
 
 export { IngestWorkflow };
+export { ContainerProxy, StdioProbeContainer } from "./stdio-container";
 
 type Bindings = CloudflareEnv;
 
@@ -177,6 +179,16 @@ app.post("/internal/verify", async (c) => {
   return c.json(result);
 });
 
+app.post("/internal/stdio-probes", async (c) => {
+  if (!c.env.STDIO_PROBE_QUEUE) return c.json({ error: { code: "NOT_CONFIGURED", message: "stdio 探测队列尚未配置" } }, 503);
+  const body = await c.req.json<{ serverId?: string; limit?: number }>().catch(() => null);
+  const ids = body?.serverId
+    ? [body.serverId]
+    : await listDueStdioProbeIds(c.env.DB, Math.min(100, Math.max(1, Number(body?.limit ?? 10))));
+  const queued = await enqueueStdioProbes(c.env, ids);
+  return c.json({ queued, ids }, 202);
+});
+
 app.post("/internal/rebuild-index", async (c) => {
   const index = await putCatalogIndex(c.env);
   return c.json({ generatedAt: index.generatedAt, count: index.servers.length });
@@ -194,6 +206,11 @@ export default {
         if (due.length && env.VERIFY_QUEUE) {
           await env.VERIFY_QUEUE.sendBatch(due.map((serverId) => ({ body: { serverId } })));
         }
+        if (env.STDIO_PROBE_ENABLED === "true" && env.STDIO_PROBE_QUEUE) {
+          const limit = Math.min(100, Math.max(1, Number(env.STDIO_PROBE_BATCH_SIZE ?? "10")));
+          const stdioDue = await listDueStdioProbeIds(env.DB, limit);
+          await enqueueStdioProbes(env, stdioDue);
+        }
         const github = await scanGitHubRepositories(env);
         console.log(JSON.stringify({ path: "scheduled-github-scan", ...github }));
       })(),
@@ -201,13 +218,14 @@ export default {
   },
   async queue(batch: MessageBatch<unknown>, env: Bindings): Promise<void> {
     for (const message of batch.messages) {
-      const body = message.body as { serverId?: string };
+      const body = message.body as { kind?: "stdio"; serverId?: string };
       if (!body.serverId) {
         message.ack();
         continue;
       }
       try {
-        await verifyServer(env, body.serverId);
+        if (body.kind === "stdio") await runCloudStdioProbe(env, body.serverId);
+        else await verifyServer(env, body.serverId);
         message.ack();
       } catch (error) {
         console.error(JSON.stringify({ path: "queue", serverId: body.serverId, error: String(error) }));

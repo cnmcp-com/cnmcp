@@ -15,14 +15,15 @@
     "d1:remote": "wrangler d1 migrations apply cnmcp --remote"
   },
   "dependencies": {
+    "@cloudflare/containers": "0.3.7",
     "@cnmcp/checkers": "*",
     "@cnmcp/schema": "*",
     "hono": "4.13.9"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "4.20250906.0",
+    "@cloudflare/workers-types": "5.20260928.1",
     "typescript": "5.9.3",
     "vitest": "3.2.4",
-    "wrangler": "4.38.0"
+    "wrangler": "4.137.0"
   }
 }

@@ -11,6 +11,20 @@ import { CHANGE_TYPE, CHECKER_LABELS, GRADE_COLOR, GRADE_PILL, GRADE_TEXT, STATU
 
 type Props = { params: Promise<{ id: string }> };
 
+const STDIO_STATUS: Record<string, string> = {
+  queued: "等待检测",
+  verified: "云端隔离实测通过",
+  credential_required: "需要凭证，未执行",
+  unsupported_launcher: "当前运行器不支持",
+  unsafe_config: "配置不符合隔离执行规则",
+  package_not_found: "依赖包不存在",
+  install_failed: "依赖安装失败",
+  startup_failed: "进程启动失败",
+  startup_timeout: "启动或握手超时",
+  protocol_failed: "MCP 协议握手失败",
+  runner_failed: "探测设施失败",
+};
+
 function isTencentCloudSource(value: string | null | undefined): boolean {
   if (!value) return false;
   try {
@@ -176,6 +190,10 @@ export default async function ServerPage({ params }: Props) {
                           <dt>运行方式</dt>
                           <dd>{transportLabel(server.transport)}</dd>
                         </div>
+                        {server.stdioProbe ? <div>
+                          <dt>隔离检测</dt>
+                          <dd>{STDIO_STATUS[server.stdioProbe.status] ?? server.stdioProbe.status}</dd>
+                        </div> : null}
                         {server.versionCount > 0 ? <div>
                           <dt>已知版本</dt>
                           <dd className="mono">{server.versionCount}</dd>
@@ -325,7 +343,28 @@ export default async function ServerPage({ params }: Props) {
                 label: "本站探测",
                 content: (
                   <div className="blk">
-                    <h3>本站探测可达</h3>
+                    <h3>{server.transport === "local" ? "云端隔离 stdio 探测" : "本站探测可达"}</h3>
+                    {server.transport === "local" ? (
+                      <>
+                        <p style={{ fontSize: 12.5, color: "var(--tx-2)", marginBottom: 14 }}>
+                          在一次性 Cloudflare Container 中只执行 initialize 和 tools/list；不调用业务工具，也不注入用户凭证。
+                        </p>
+                        <pre className="code">
+                          {compactJson(server.stdioProbe ? {
+                            status: STDIO_STATUS[server.stdioProbe.status] ?? server.stdioProbe.status,
+                            launcher: server.stdioProbe.launcher,
+                            packageName: server.stdioProbe.packageName,
+                            resolvedPackageVersion: server.stdioProbe.resolvedPackageVersion,
+                            protocolVersion: server.stdioProbe.protocolVersion,
+                            latencyMs: server.stdioProbe.latencyMs,
+                            toolCount: server.stdioProbe.toolCount,
+                            completedAt: server.stdioProbe.completedAt,
+                            errorCode: server.stdioProbe.errorCode,
+                          } : { status: "尚未进入云端隔离检测" })}
+                        </pre>
+                      </>
+                    ) : (
+                      <>
                     <div className="node-c">
                       <div className="cn">本站探测节点</div>
                       <div className="cv" style={{ color: reach.pill === "p-ok" ? "var(--tx)" : reach.pill === "p-bad" ? "var(--bad)" : "var(--tx-3)" }}>
@@ -351,6 +390,8 @@ export default async function ServerPage({ params }: Props) {
                         note: "本站探测可达，不是中国大陆四城实测",
                       })}
                     </pre>
+                      </>
+                    )}
                   </div>
                 ),
               },

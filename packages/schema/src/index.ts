@@ -122,6 +122,21 @@ export type SourceReadme = {
   collectedAt: string | null;
 };
 
+export type StdioProbeSummary = {
+  runId: string;
+  runnerVersion: string;
+  launcher: string | null;
+  packageName: string | null;
+  resolvedPackageVersion: string | null;
+  status: string;
+  protocolVersion: string | null;
+  latencyMs: number | null;
+  toolCount: number;
+  errorCode: string | null;
+  startedAt: string;
+  completedAt: string | null;
+};
+
 export type ReadmeBlock =
   | { type: "heading"; level: 1 | 2 | 3; text: string }
   | { type: "paragraph"; text: string }
@@ -233,6 +248,7 @@ export type ServerDetail = ServerSummary & {
   source: SourceInfo;
   reliableConfig: ReliableConfig | null;
   readme: SourceReadme | null;
+  stdioProbe: StdioProbeSummary | null;
   claimedToolNames: string[];
   verifications: Verification[];
   snapshots: ScoreSnapshot[];
