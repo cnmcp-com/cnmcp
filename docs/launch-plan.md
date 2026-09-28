@@ -26,7 +26,7 @@
 ## P2｜稳定后迭代
 
 1. 为 GitHub 扫描增加 Release、README 和许可证变化检测。
-2. 部署隔离的 `stdio` 探测节点，支持受控的 npm、Python 启动器。
+2. 部署隔离的 `stdio` 探测节点，支持受控的 npm、Python 启动器。生产容器和首批 5 项灰度已完成，自动全量调度保持关闭，待扩大到 10、50 项继续观察。
 3. 增加发布方申诉、变更订阅和公开验证报告导出。
 
 ## 发布检查清单
@@ -39,3 +39,10 @@
 - [x] 运行 `npm run build`
 - [ ] 验证首页、目录、资源详情、来源说明、变更历史和 GitHub 链接
 - [ ] 手动触发一次 Cron，确认 GitHub 扫描、Queue 消费、D1 与 R2 写入正常
+
+## stdio Containers 生产灰度记录
+
+- 2026-09-28：生产 D1 已应用 `0006_stdio_probe_runs.sql`，已创建 `cnmcp-stdio-probe` 与 `cnmcp-stdio-probe-dlq`。
+- API Worker、Container 镜像及受限出站网络已发布，4 个 `basic` 实例健康；`STDIO_PROBE_ENABLED=false`，不会自动扩大流量。
+- 首批 5 项全部进入明确终态：3 项完成 MCP 握手，1 项 npm 包不存在，1 项上游 Python 包启动时发生 API 不兼容。
+- 成功任务均写入 D1 与 R2；失败任务未进入动态评分。下一阶段按 10 项、50 项逐级扩大，并观察成功率、P95 延迟与费用。

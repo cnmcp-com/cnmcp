@@ -511,6 +511,23 @@ export async function getServerDetail(db: D1Database, id: string): Promise<Serve
   const staticCheck = await db.prepare(`SELECT confidence_score FROM static_checks WHERE server_id = ?`).bind(id).first<{
     confidence_score: number;
   }>();
+  const stdioProbe = await db
+    .prepare(`SELECT * FROM stdio_probe_runs WHERE server_id = ? ORDER BY started_at DESC LIMIT 1`)
+    .bind(id)
+    .first<{
+      id: string;
+      runner_version: string;
+      launcher: string | null;
+      package_name: string | null;
+      resolved_package_version: string | null;
+      status: string;
+      protocol_version: string | null;
+      latency_ms: number | null;
+      tool_count: number;
+      error_code: string | null;
+      started_at: string;
+      completed_at: string | null;
+    }>();
 
   const primary = endpoints.results?.[0];
   const summary = toSummary(row, {
@@ -590,6 +607,22 @@ export async function getServerDetail(db: D1Database, id: string): Promise<Serve
         ? { source: config.source, config: parseJson(config.config_json, { mcpServers: {} }) }
         : null,
     readme: readme?.body ? { body: readme.body, collectedAt: readme.collected_at } : null,
+    stdioProbe: stdioProbe
+      ? {
+          runId: stdioProbe.id,
+          runnerVersion: stdioProbe.runner_version,
+          launcher: stdioProbe.launcher,
+          packageName: stdioProbe.package_name,
+          resolvedPackageVersion: stdioProbe.resolved_package_version,
+          status: stdioProbe.status,
+          protocolVersion: stdioProbe.protocol_version,
+          latencyMs: stdioProbe.latency_ms,
+          toolCount: stdioProbe.tool_count,
+          errorCode: stdioProbe.error_code,
+          startedAt: stdioProbe.started_at,
+          completedAt: stdioProbe.completed_at,
+        }
+      : null,
     claimedToolNames: parseJson(row.claimed_tool_names, []),
     verifications: (verifications.results ?? []).map((item) => ({
       id: item.id,

@@ -5,8 +5,26 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
   "vars": {
-    "ALLOWED_ORIGINS": "http://localhost:3000,https://www.cnmcp.com"
+    "ALLOWED_ORIGINS": "http://localhost:3000,https://www.cnmcp.com",
+    "STDIO_PROBE_ENABLED": "false",
+    "STDIO_PROBE_BATCH_SIZE": "10"
   },
+  "containers": [
+    {
+      "class_name": "StdioProbeContainer",
+      "image": "./container/Dockerfile",
+      "instance_type": "basic",
+      "max_instances": 4
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "STDIO_PROBE_CONTAINER", "class_name": "StdioProbeContainer" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["StdioProbeContainer"] }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
@@ -23,13 +41,22 @@
   ],
   "queues": {
     "producers": [
-      { "binding": "VERIFY_QUEUE", "queue": "cnmcp-verify" }
+      { "binding": "VERIFY_QUEUE", "queue": "cnmcp-verify" },
+      { "binding": "STDIO_PROBE_QUEUE", "queue": "cnmcp-stdio-probe" }
     ],
     "consumers": [
       {
         "queue": "cnmcp-verify",
         "max_batch_size": 4,
         "max_batch_timeout": 30
+      },
+      {
+        "queue": "cnmcp-stdio-probe",
+        "max_batch_size": 1,
+        "max_batch_timeout": 10,
+        "max_concurrency": 2,
+        "max_retries": 2,
+        "dead_letter_queue": "cnmcp-stdio-probe-dlq"
       }
     ]
   },
