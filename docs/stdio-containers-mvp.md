@@ -19,6 +19,16 @@ MVP 在一次性 Cloudflare Container 中启动公开、无需凭证的 `npx`、
 5. runner 完成 stdio 握手后强制结束进程树，Container class 随即销毁实例。
 6. 运行摘要写入 `stdio_probe_runs`，证据写入 R2；只有成功握手才进入现有动态评分。
 
+## 业务执行周期
+
+1. **触发**：生产 Cron 在每 6 小时的第 17 分钟运行；只有 `STDIO_PROBE_ENABLED=true` 才会自动选择任务。灰度阶段保持为 `false`，通过受鉴权的 `/internal/stdio-probes` 手动触发。
+2. **候选选择**：仅考虑 `transport=local`、配置可解析且无需凭证的 MCP。首次任务立即到期；最近一次成功的任务 7 天后复测，其他明确失败的任务 24 小时后可重试。默认每轮最多 10 项，代码硬上限为 100 项。
+3. **排队**：每个 MCP 生成一条 `cnmcp-stdio-probe` 消息。消费者单消息处理、最多并发 2 项；未捕获的 Worker/Queue 异常最多重试 2 次，仍失败则进入 `cnmcp-stdio-probe-dlq`。已经分类并落库的 Container 失败会正常确认消息，不重复消耗资源。
+4. **准备**：Worker 创建 D1 `queued` 记录，校验启动器和参数，并从 npm 或 PyPI 解析、固定精确版本。配置、凭证或包解析失败会直接写入明确终态，不启动 Container。
+5. **隔离执行**：每次运行使用 `runId` 创建独立 Container。实例以非 root 用户执行包，只允许访问 npm/PyPI 下载域名，只发送 MCP `initialize`、`notifications/initialized` 和 `tools/list`；单次最长 180 秒。
+6. **收尾**：无论成功或失败都会终止子进程并销毁 Container。摘要写入 D1，已启动任务的证据写入 R2；只有 `verified` 结果会进入现有动态验证与评分。
+7. **下一周期**：Queue 消息确认后刷新目录索引。成功项目等待 7 天，明确失败项目等待 24 小时；当前自动调度关闭，因此不会自行进入下一周期。
+
 ## 安全控制
 
 - 不接受 Shell 字符串，容器进程使用参数数组启动。
