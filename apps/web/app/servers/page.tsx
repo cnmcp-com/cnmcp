@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { fetchDirectory } from "@/lib/api";
+import { serverPublicPath } from "@/lib/server-path";
 import { ServerCard } from "@/components/ui-blocks";
 import { BUSINESS_CATEGORIES } from "@/lib/ui";
 
@@ -67,7 +68,7 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
       "@type": "ListItem",
       position: index + 1,
       name: server.title,
-      url: `${site}/servers/${encodeURIComponent(server.id)}`,
+      url: `${site}${serverPublicPath(server.id)}`,
     })),
   };
 

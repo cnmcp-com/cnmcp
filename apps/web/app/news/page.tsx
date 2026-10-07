@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { fetchActivity } from "@/lib/api";
+import { serverPublicPath } from "@/lib/server-path";
 import { formatDate } from "@/lib/ui";
 
 export const metadata: Metadata = {
@@ -37,7 +38,7 @@ export default async function NewsPage() {
       {items.length ? (
         <div className="activity-list">
           {items.map((item, index) => (
-            <Link className="activity-row" href={`/servers/${encodeURIComponent(item.serverId)}`} key={`${item.serverId}-${item.occurredAt}-${index}`}>
+            <Link className="activity-row" href={serverPublicPath(item.serverId)} key={`${item.serverId}-${item.occurredAt}-${index}`}>
               <span className={`dot ${item.severity === "high" ? "d-bad" : item.severity === "warn" ? "d-warn" : "d-ok"}`} />
               <div className="activity-main">
                 <div><b>{item.title}</b><span className="pill p-gray">{item.kind === "change" ? "变更" : "验证"}</span></div>

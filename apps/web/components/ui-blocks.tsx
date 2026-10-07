@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import type { ServerSummary } from "@cnmcp/schema";
 
+import { serverPublicPath } from "@/lib/server-path";
 import { GRADE_PILL, formatDateShort, reachLabel, transportLabel } from "@/lib/ui";
 
 export function HeroSearch() {
@@ -45,7 +46,7 @@ export function ServerCard({ server }: { server: ServerSummary }) {
   const measuredLabel = server.grade === "C" ? "已实测 · 需谨慎" : server.grade === "D" ? "已实测 · 结果较差" : "已实测";
 
   return (
-    <Link href={`/servers/${encodeURIComponent(server.id)}`} className="sc">
+    <Link href={serverPublicPath(server.id)} className="sc">
       {server.status === "dead" ? <span className="pill p-bad sc-badge">失效</span> : null}
       <div className="sc-top">
         <span className={`resource-mark ${server.isOfficial ? "official" : server.transport === "remote" ? "remote" : "local"}`} role="img" aria-label={server.isOfficial ? "可信方发布资源" : transportLabel(server.transport)}>

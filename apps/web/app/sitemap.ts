@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { fetchDirectory } from "@/lib/api";
+import { serverPublicPath } from "@/lib/server-path";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.cnmcp.com";
@@ -24,15 +25,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       cursor = directory.nextCursor;
       if (!cursor) break;
     }
-    return [
-      ...staticRoutes,
-      ...servers.map((server) => ({
-        url: `${site}/servers/${encodeURIComponent(server.id)}`,
-        changeFrequency: "daily" as const,
-        priority: 0.9,
-        lastModified: server.verifiedAt ?? server.lastPublishedAt ?? undefined,
-      })),
-    ];
+    const serverRoutes = servers.flatMap((server) => {
+      const id = server.id.trim();
+      if (!id || /^(https?:)?\/\//i.test(id)) return [];
+      return [
+        {
+          url: `${site}${serverPublicPath(id)}`,
+          changeFrequency: "daily" as const,
+          priority: 0.9,
+          lastModified: server.verifiedAt ?? server.lastPublishedAt ?? undefined,
+        },
+      ];
+    });
+    return [...staticRoutes, ...serverRoutes];
   } catch {
     return staticRoutes;
   }

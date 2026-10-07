@@ -1,15 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
 import { fetchServer, getPublicApiUrl } from "@/lib/api";
+import { resolveServerRoute, serverPublicPath } from "@/lib/server-path";
 import { CopyConfig } from "@/components/copy-config";
 import { ScoreRing } from "@/components/score-ring";
 import { DetailTabs } from "@/components/ui-blocks";
 import { readmeToBlocks } from "@cnmcp/schema";
 import { CHANGE_TYPE, CHECKER_LABELS, GRADE_COLOR, GRADE_PILL, GRADE_TEXT, STATUS_UI, compactJson, formatDate, reachLabel, sparkline, statusHint, transportLabel } from "@/lib/ui";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ id: string[] }> };
+
+async function resolveId(params: Props["params"]): Promise<string | null> {
+  const { id } = await params;
+  const route = resolveServerRoute(id ?? []);
+  if (!route) return null;
+  if ("redirect" in route) permanentRedirect(route.redirect);
+  return route.id;
+}
 
 const STDIO_STATUS: Record<string, string> = {
   queued: "等待检测",
@@ -36,22 +45,25 @@ function isTencentCloudSource(value: string | null | undefined): boolean {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
-  const server = await fetchServer(decodeURIComponent(id)).catch(() => null);
+  const id = await resolveId(params);
+  if (!id) return { title: "未收录" };
+  const server = await fetchServer(id).catch(() => null);
   if (!server) return { title: "未收录" };
   const title = `${server.title} MCP 服务：工具、配置与验证结果`;
   const description = `${server.title} MCP 服务介绍、工具清单、公开来源、接入配置和验证结果。${server.description}`.slice(0, 160);
+  const path = serverPublicPath(server.id);
   return {
     title,
     description,
-    alternates: { canonical: `/servers/${encodeURIComponent(server.id)}` },
-    openGraph: { title, description, url: `/servers/${encodeURIComponent(server.id)}` },
+    alternates: { canonical: path },
+    openGraph: { title, description, url: path },
   };
 }
 
 export default async function ServerPage({ params }: Props) {
-  const { id } = await params;
-  const server = await fetchServer(decodeURIComponent(id));
+  const id = await resolveId(params);
+  if (!id) notFound();
+  const server = await fetchServer(id);
   if (!server) notFound();
   const latest = server.snapshots[0];
   const endpoint = server.endpoints[0];
@@ -73,7 +85,7 @@ export default async function ServerPage({ params }: Props) {
   const visibleChangeEvents = server.changeEvents.filter((event) => event.type !== "pricing_changed");
   const history = [...server.snapshots].reverse().map((snap) => snap.score);
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.cnmcp.com";
-  const pageUrl = `${site}/servers/${encodeURIComponent(server.id)}`;
+  const pageUrl = `${site}${serverPublicPath(server.id)}`;
   const badgeUrl = `${getPublicApiUrl()}/badge/${encodeURIComponent(server.id)}.svg`;
   const checkers = (["alive", "contract", "probe", "freshness"] as const).map((key) => {
     const component = latest?.components[key];
@@ -462,7 +474,7 @@ export default async function ServerPage({ params }: Props) {
                   </div>
                   <div style={{ padding: "10px 14px", borderTop: "1px solid var(--border)" }}>
                     <pre className="code" style={{ margin: 0, fontSize: 11 }}>
-                      {`[![CNMCP](${badgeUrl})](${site}/servers/${encodeURIComponent(server.id)})`}
+                      {`[![CNMCP](${badgeUrl})](${pageUrl})`}
                     </pre>
                   </div>
                 </div>

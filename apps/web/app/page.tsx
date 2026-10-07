@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { HeroSearch } from "@/components/ui-blocks";
 import { fetchDirectory, fetchStats } from "@/lib/api";
+import { serverPublicPath } from "@/lib/server-path";
 import { BUSINESS_CATEGORIES, formatNumber } from "@/lib/ui";
 
 type Search = { q?: string; business?: string; reachable?: string; transport?: string; official?: string; cursor?: string };
@@ -82,7 +83,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             <div className="resource-board-head"><span><i className="live-dot" /> 公开证据较完整</span><Link href="/servers?sort=static">查看全部</Link></div>
             <div className="resource-board-list">
               {featured.map((server) => (
-                <Link key={server.id} href={`/servers/${encodeURIComponent(server.id)}`}>
+                <Link key={server.id} href={serverPublicPath(server.id)}>
                   <span><b>{server.title}</b><small>{server.sourceLabel ?? "来源已收录"} · {server.grade ? "已动态实测" : "待动态实测"}</small></span>
                   <span className={`resource-board-state ${server.isOfficial ? "official" : server.grade ? "measured" : "checked"}`}>
                     {server.isOfficial ? "可信方发布" : server.grade ? "已实测" : "证据已检查"}
