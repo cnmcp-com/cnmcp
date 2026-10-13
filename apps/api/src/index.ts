@@ -24,14 +24,21 @@ app.use("*", async (c, next) => {
       .filter(Boolean),
   );
   const origin = c.req.header("Origin") ?? "";
-  if (origin && allowed.has(origin)) {
-    c.header("Access-Control-Allow-Origin", origin);
-    c.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-    c.header("Access-Control-Allow-Headers", "Content-Type");
+  const applyCorsHeaders = () => {
+    if (origin && allowed.has(origin)) {
+      c.res.headers.set("Access-Control-Allow-Origin", origin);
+      c.res.headers.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+      c.res.headers.set("Access-Control-Allow-Headers", "Content-Type");
+    }
+    c.res.headers.set("Vary", "Origin");
+  };
+  if (c.req.method === "OPTIONS") {
+    const response = c.body(null, 204);
+    applyCorsHeaders();
+    return response;
   }
-  c.header("Vary", "Origin");
-  if (c.req.method === "OPTIONS") return c.body(null, 204);
   await next();
+  applyCorsHeaders();
 });
 
 app.use("/internal/*", async (c, next) => {
