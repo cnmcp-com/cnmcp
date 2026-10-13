@@ -6,7 +6,7 @@
   "observability": { "enabled": true },
   "vars": {
     "ALLOWED_ORIGINS": "http://localhost:3000,https://www.cnmcp.com",
-    "STDIO_PROBE_ENABLED": "false",
+    "STDIO_PROBE_ENABLED": "true",
     "STDIO_PROBE_BATCH_SIZE": "10"
   },
   "containers": [

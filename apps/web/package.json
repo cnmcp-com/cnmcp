@@ -11,7 +11,7 @@
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "start": "next start",
     "typecheck": "tsc --noEmit --incremental false",
-    "test": "node --experimental-strip-types --test lib/server-path.test.mts",
+    "test": "node --experimental-strip-types --test lib/*.test.mts",
     "lint": "echo skip"
   },
   "dependencies": {

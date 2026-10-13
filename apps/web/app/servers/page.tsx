@@ -164,9 +164,9 @@ export default async function DirectoryPage({ searchParams }: { searchParams: Pr
           {items.length === 0 && !error ? (
             <div className="empty">
               <div style={{ fontSize: 15, fontWeight: 500, color: "var(--tx)", marginBottom: 6 }}>没有匹配的 server</div>
-              <div style={{ marginBottom: 16 }}>换个条件，或者把它的端点提交给我们验证。</div>
-              <Link className="btn btn-s btn-sm" href="/submit">
-                提交 server 验证
+              <div style={{ marginBottom: 16 }}>换个条件，或者前往检测中心提交配置。</div>
+              <Link className="btn btn-s btn-sm" href="/doctor">
+                检测并提交 MCP
               </Link>
             </div>
           ) : (

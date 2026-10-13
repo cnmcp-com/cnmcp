@@ -151,9 +151,6 @@ export default async function ServerPage({ params }: Props) {
             </div>
           </div>
         </div>
-        <div className="dt-act">
-          <Link className="btn btn-s btn-sm" href="/submit">申诉</Link>
-        </div>
       </div>
 
       <div className="dt-body">

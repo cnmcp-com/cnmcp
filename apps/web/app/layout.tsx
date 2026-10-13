@@ -48,7 +48,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <span>不接受付费收录与付费提分</span>
           <span>可达数据来自本站探测，不是北上广成四城</span>
           <span style={{ marginLeft: "auto" }}>
-            <Link href="/submit">提交 server</Link>
+            <Link href="/doctor">检测并提交 MCP</Link>
             {" · "}
             <Link href="/report">数据报告</Link>
             {" · "}

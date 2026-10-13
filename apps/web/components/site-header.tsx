@@ -13,7 +13,7 @@ const LINKS = [
   { href: "/", label: "首页", match: (path: string) => path === "/" },
   { href: "/servers", label: "目录", match: (path: string) => path.startsWith("/servers") },
   { href: "/report", label: "数据报告", match: (path: string) => path.startsWith("/report") },
-  { href: "/doctor", label: "配置体检", match: (path: string) => path.startsWith("/doctor") },
+  { href: "/doctor", label: "检测中心", match: (path: string) => path.startsWith("/doctor") || path.startsWith("/submit") },
   { href: "/news", label: "验证动态", match: (path: string) => path.startsWith("/news") },
 ];
 

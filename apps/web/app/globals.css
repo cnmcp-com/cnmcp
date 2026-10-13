@@ -2306,6 +2306,13 @@ select.sel {
 .submit-status { padding: 11px 13px; border-radius: var(--r-sm); font-size: 12.5px; }
 .submit-status.ok { color: var(--ok); background: var(--ok-bg); }
 .submit-status.bad { color: var(--bad); background: var(--bad-bg); }
+.submit-status.info { color: var(--info); background: var(--info-bg); }
+.submit-status small { display: block; margin-top: 5px; color: inherit; font-family: var(--mono); overflow-wrap: anywhere; }
+.doctor-cloud-check { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 22px; margin-top: 20px; padding: 24px; }
+.doctor-cloud-check h2 { margin: 5px 0 7px; font-size: 18px; }
+.doctor-cloud-check p { max-width: 760px; color: var(--tx-2); font-size: 13px; }
+.doctor-cloud-check .doctor-cloud-note { margin-top: 6px; color: var(--tx-3); font-size: 12px; }
+.doctor-cloud-check .submit-status { grid-column: 1 / -1; }
 .submit-flow { padding: 22px; }
 .submit-flow h2 { font-size: 16px; margin-bottom: 18px; }
 .submit-flow ol { list-style: none; display: grid; gap: 16px; }
@@ -2340,7 +2347,8 @@ select.sel {
   .ckgrid {
     grid-template-columns: 1fr;
   }
-  .report-grid, .submit-grid, .method-grid { grid-template-columns: 1fr; }
+  .report-grid, .submit-grid, .method-grid, .doctor-cloud-check { grid-template-columns: 1fr; }
+  .doctor-cloud-check .submit-status { grid-column: auto; }
   .dir {
     grid-template-columns: 1fr;
   }

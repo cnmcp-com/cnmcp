@@ -9,10 +9,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: site, changeFrequency: "hourly", priority: 1 },
     { url: `${site}/servers`, changeFrequency: "hourly", priority: 0.95 },
     { url: `${site}/report`, changeFrequency: "weekly", priority: 0.7 },
-    { url: `${site}/doctor`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${site}/doctor`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${site}/news`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${site}/methodology`, changeFrequency: "monthly", priority: 0.6 },
-    { url: `${site}/submit`, changeFrequency: "monthly", priority: 0.5 },
   ];
   try {
     const servers: Awaited<ReturnType<typeof fetchDirectory>>["items"] = [];
