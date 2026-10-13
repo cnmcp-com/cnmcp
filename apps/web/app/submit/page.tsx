@@ -13,21 +13,22 @@ export default function SubmitPage() {
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const type = String(form.get("type") ?? "new_server");
+    const repoUrl = String(form.get("repoUrl") ?? "").trim();
+    const packageName = String(form.get("packageName") ?? "").trim();
+    const packageRegistry = String(form.get("packageRegistry") ?? "npm");
     const endpoint = String(form.get("endpoint") ?? "").trim();
-    const namespace = String(form.get("namespace") ?? "").trim();
-    const note = String(form.get("note") ?? "").trim();
+    const configText = String(form.get("config") ?? "").trim();
 
-    if (!endpoint && !namespace) {
-      setStatus({ tone: "bad", text: "请至少填写公开端点或 namespace/name。" });
+    if (!repoUrl && !packageName && !endpoint && !configText) {
+      setStatus({ tone: "bad", text: "请至少填写公开仓库、包名、MCP 端点或公开安装配置。" });
       return;
     }
-    if (endpoint) {
+    let config: unknown;
+    if (configText) {
       try {
-        const url = new URL(endpoint);
-        if (!['http:', 'https:'].includes(url.protocol)) throw new Error("protocol");
+        config = JSON.parse(configText) as unknown;
       } catch {
-        setStatus({ tone: "bad", text: "公开端点需要是完整的 http 或 https URL。" });
+        setStatus({ tone: "bad", text: "安装配置不是有效 JSON。请勿粘贴真实密钥。" });
         return;
       }
     }
@@ -38,7 +39,14 @@ export default function SubmitPage() {
       const response = await fetch(`${getPublicApiUrl()}/v1/submissions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, endpoint, namespace, note }),
+        body: JSON.stringify({
+          type: "new_server",
+          repoUrl: repoUrl || undefined,
+          packageName: packageName || undefined,
+          packageRegistry: packageName ? packageRegistry : undefined,
+          endpoint: endpoint || undefined,
+          config,
+        }),
       });
       const result = await response.json() as { id?: string; error?: { message?: string } };
       setStatus(response.ok
@@ -55,32 +63,34 @@ export default function SubmitPage() {
   return (
     <div className="wrap submit-page">
       <div className="page-hd">
-        <h1>提交资源或更正</h1>
-        <p>只提交公开信息。不要粘贴 API Key、访问令牌或包含真实凭证的 mcp.json。</p>
+        <h1>提交 MCP 资源</h1>
+        <p>提交内容只用于定位资源，站点会重新获取公开资料并独立检测，不会把用户描述作为收录或评分依据。</p>
       </div>
       <div className="submit-grid">
         <form onSubmit={onSubmit} className="card submit-form">
           <label className="form-field">
-            提交类型
-            <select name="type" defaultValue="new_server">
-              <option value="new_server">新增资源</option>
-              <option value="claim">认领或补充发布方</option>
-              <option value="appeal">更正验证结果</option>
-              <option value="rule">补充检查规则</option>
-              <option value="opt_out">申请退出收录</option>
+            公开代码仓库 <span>推荐</span>
+            <input name="repoUrl" placeholder="https://github.com/owner/project" inputMode="url" />
+          </label>
+          <label className="form-field">
+            发布包 <span>可选</span>
+            <select name="packageRegistry" defaultValue="npm">
+              <option value="npm">npm</option>
+              <option value="pypi">PyPI</option>
             </select>
+            <input name="packageName" placeholder="@scope/package 或 package-name" />
           </label>
           <label className="form-field">
-            公开端点 URL <span>可选</span>
-            <input name="endpoint" placeholder="https://example.com/mcp" inputMode="url" />
+            公开 MCP 端点 <span>可选</span>
+            <input name="endpoint" placeholder="https://mcp.example.org/mcp" inputMode="url" />
           </label>
           <label className="form-field">
-            namespace/name <span>可选</span>
-            <input name="namespace" placeholder="example.com/maps" />
-          </label>
-          <label className="form-field">
-            说明与证据
-            <textarea name="note" placeholder="请附公开仓库、官网或能够复核的说明。" maxLength={2000} />
+            安装配置 JSON <span>可选，可自动识别包名</span>
+            <textarea
+              name="config"
+              placeholder={'{"mcpServers":{"demo":{"command":"npx","args":["-y","demo-mcp"],"env":{"API_TOKEN":"${API_TOKEN}"}}}}'}
+              maxLength={12000}
+            />
           </label>
           <button className="btn btn-p" type="submit" disabled={submitting}>
             {submitting ? "正在提交…" : "提交审核"}
@@ -95,7 +105,7 @@ export default function SubmitPage() {
             <li><b>3</b><div><strong>动态验证</strong><span>具备条件时执行标准协议握手。</span></div></li>
             <li><b>4</b><div><strong>写入目录</strong><span>保留证据、时间和算法版本。</span></div></li>
           </ol>
-          <p>提交不代表通过，也不会因付费获得收录或提分。</p>
+          <p>提交记录只表示进入处理队列，不构成可信证据。请勿提交 API Key、令牌或密码。</p>
         </aside>
       </div>
     </div>

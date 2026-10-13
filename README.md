@@ -28,14 +28,14 @@ CNMCP 以公开证据为主要展示维度，动态验证作为辅助证据：
 
 ```text
 apps/web              Next.js 网站：目录、资源详情、配置体检和数据报告
-apps/api              Cloudflare Worker：采集、队列、验证、只读 API
+apps/api              Cloudflare Worker：用户提交、公开取证、队列、验证与只读 API
 packages/checkers     静态检查与动态评分逻辑
 packages/doctor       浏览器端配置体检
 packages/schema       共享数据结构、发布方规则和展示转换
 scripts               数据整理与维护脚本
 ```
 
-生产环境使用 Cloudflare Workers、D1、Queues、Workflows 和 R2。D1 保存目录与验证结果，R2 保存可复核证据，Queues 与 Cron Trigger 负责分批执行验证任务。
+生产环境使用 Cloudflare Workers、D1、Queues 和 R2。D1 保存目录、提交状态与验证结果，R2 保存可复核证据，Queues 与 Cron Trigger 负责分批执行提交处理和周期验证。
 
 ## 本地开发
 
@@ -71,9 +71,11 @@ npm run build
 
 - 只对公开 Remote MCP 端点执行标准协议握手，不调用资源提供的业务工具。
 - 本地 `stdio` 服务必须在受限的隔离环境中运行，不能由普通 Worker 直接执行。
+- 不从官方 Registry 或第三方 MCP 目录批量导入资源；新增资源从用户提交入口进入。
+- 用户提交只保存公开定位信息并触发检查，不作为资源资料、可信证据或评分依据。
 - 所有外部内容均视为不可信数据；来源文本不会作为系统指令执行。
 - 不接受付费收录、付费提分或隐藏负面验证结果。
-- 资源作者可以提交更正、申诉或退出收录请求。
+- 资源作者与用户可以提交公开仓库、发布包或 MCP 端点供站点独立复核。
 
 ## 参与贡献
 

@@ -1,17 +1,15 @@
 import { Hono } from "hono";
 
-import { ALGORITHM_VERSION, type ReliableConfig } from "@cnmcp/schema";
+import { ALGORITHM_VERSION } from "@cnmcp/schema";
 
 import { renderBadge } from "./badge";
-import { getDirectory, getRecentActivity, getServerDetail, getStats, listDueServerIds, listProbeQueue, upsertReadmes } from "./db";
-import { IngestWorkflow, ingestPages } from "./ingest";
+import { getDirectory, getRecentActivity, getServerDetail, getStats, listDueServerIds, listProbeQueue } from "./db";
 import { buildCatalogIndex, putCatalogIndex } from "./index-file";
-import { scanGitHubRepositories } from "./github-scan";
-import { persistPlazaCatalog, type PlazaCatalog } from "./tencent-plaza";
+import { listRecoverableSubmissionIds, processSubmission } from "./submission-processing";
+import { normalizeSubmissionPayload, type SubmissionPayload } from "./submission";
 import { stdioHandshakeOf, verifyServer } from "./verify";
 import { enqueueStdioProbes, listDueStdioProbeIds, runCloudStdioProbe } from "./stdio-probe";
 
-export { IngestWorkflow };
 export { ContainerProxy, StdioProbeContainer } from "./stdio-container";
 
 type Bindings = CloudflareEnv;
@@ -111,59 +109,59 @@ app.get("/badge/*", async (c) => {
 });
 
 app.post("/v1/submissions", async (c) => {
-  const body = await c.req.json<{ type?: string; endpoint?: string; namespace?: string; note?: string }>().catch(() => null);
-  if (!body?.endpoint && !body?.namespace) {
-    return c.json({ error: { code: "INVALID", message: "需要 endpoint 或 namespace" } }, 400);
+  const raw = await c.req.text();
+  if (!raw || raw.length > 20_000) return c.json({ error: { code: "INVALID", message: "提交内容为空或过大" } }, 400);
+  let body: SubmissionPayload;
+  try {
+    body = JSON.parse(raw) as SubmissionPayload;
+  } catch {
+    return c.json({ error: { code: "INVALID", message: "提交内容不是有效 JSON" } }, 400);
   }
-  const allowedTypes = new Set(["new_server", "claim", "appeal", "rule", "opt_out"]);
-  if (body.type && !allowedTypes.has(body.type)) {
-    return c.json({ error: { code: "INVALID", message: "不支持的提交类型" } }, 400);
-  }
-  if (body.endpoint) {
-    try {
-      const endpoint = new URL(body.endpoint);
-      if (endpoint.protocol !== "http:" && endpoint.protocol !== "https:") throw new Error("protocol");
-    } catch {
-      return c.json({ error: { code: "INVALID", message: "endpoint 必须是完整的 http 或 https URL" } }, 400);
-    }
-  }
-  if ((body.note?.length ?? 0) > 2000) {
-    return c.json({ error: { code: "INVALID", message: "说明不能超过 2000 字" } }, 400);
+  let payload;
+  try {
+    payload = normalizeSubmissionPayload(body);
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "submission_invalid";
+    const messages: Record<string, string> = {
+      credential_material_not_allowed: "配置中包含疑似真实凭证，请改用环境变量占位符",
+      public_locator_required: "请至少填写公开仓库、包名或 MCP 端点",
+      endpoint_not_public_mcp: "端点必须是公开可访问的 MCP URL",
+      repo_url_invalid: "仓库地址必须是完整的 http 或 https URL",
+      endpoint_url_invalid: "端点地址必须是完整的 http 或 https URL",
+    };
+    return c.json({ error: { code: "INVALID", message: messages[code] ?? "提交内容不符合要求" } }, 400);
   }
   const id = crypto.randomUUID();
   await c.env.DB.prepare(
     `INSERT INTO submissions (id, type, payload, status, submitted_at) VALUES (?, ?, ?, 'queued', ?)`,
   )
-    .bind(id, body.type ?? "new_server", JSON.stringify({ endpoint: body.endpoint ?? null, namespace: body.namespace ?? null, note: body.note ?? null }), new Date().toISOString())
+    .bind(id, payload.type, JSON.stringify(payload), new Date().toISOString())
     .run();
+  if (c.env.SUBMISSION_QUEUE) {
+    try {
+      await c.env.SUBMISSION_QUEUE.send({ kind: "submission", submissionId: id });
+    } catch (error) {
+      console.error(JSON.stringify({ path: "submission-enqueue", submissionId: id, error: String(error) }));
+    }
+  }
   return c.json({ id, status: "queued" }, 202);
 });
 
-app.post("/internal/ingest", async (c) => {
-  const pages = Math.min(20, Math.max(1, Number(new URL(c.req.url).searchParams.get("pages") ?? "2")));
-  const result = await ingestPages(c.env, null, pages);
-  return c.json(result);
-});
-
-app.post("/internal/ingest-plaza", async (c) => {
-  const body = await c.req.json<PlazaCatalog>().catch(() => null);
-  if (!body?.servers || !Array.isArray(body.servers)) {
-    return c.json({ error: { code: "INVALID", message: "需要 PlazaCatalog.servers" } }, 400);
-  }
-  const result = await persistPlazaCatalog(c.env, body);
-  return c.json(result);
-});
-
-app.post("/internal/ingest-readmes", async (c) => {
-  const body = await c.req.json<{ readmes?: Array<{ serverId?: string; body?: string; collectedAt?: string; reliableConfig?: ReliableConfig | null }> }>().catch(() => null);
-  const readmes = (body?.readmes ?? []).flatMap((item) => {
-    if (!item.serverId || !item.body) return [];
-    const config = item.reliableConfig;
-    const reliableConfig = config && (config.source === "readme" || config.source === "remote") ? config : null;
-    return [{ serverId: item.serverId, body: item.body, collectedAt: item.collectedAt || new Date().toISOString(), reliableConfig }];
+app.get("/v1/submissions/:id", async (c) => {
+  const row = await c.env.DB.prepare(
+    `SELECT id, status, resource_id, submitted_at, processed_at, error_code FROM submissions WHERE id = ?`,
+  )
+    .bind(c.req.param("id"))
+    .first<{ id: string; status: string; resource_id: string | null; submitted_at: string; processed_at: string | null; error_code: string | null }>();
+  if (!row) return c.json({ error: { code: "NOT_FOUND", message: "提交记录不存在" } }, 404);
+  return c.json({
+    id: row.id,
+    status: row.status,
+    resourceId: row.resource_id,
+    submittedAt: row.submitted_at,
+    processedAt: row.processed_at,
+    errorCode: row.error_code,
   });
-  if (!readmes.length) return c.json({ error: { code: "INVALID", message: "需要 readmes" } }, 400);
-  return c.json(await upsertReadmes(c.env.DB, readmes));
 });
 
 app.get("/internal/probe-queue", async (c) => {
@@ -199,9 +197,14 @@ export default {
   async scheduled(_controller: ScheduledController, env: Bindings, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(
       (async () => {
-        // The production catalog currently uses the curated local dataset as its
-        // source of truth. Keep the registry workflow available for a future
-        // opt-in import, but do not merge Official Registry records on schedule.
+        if (env.SUBMISSION_QUEUE) {
+          const submissions = await listRecoverableSubmissionIds(env.DB, 50);
+          if (submissions.length) {
+            await env.SUBMISSION_QUEUE.sendBatch(
+              submissions.map((submissionId) => ({ body: { kind: "submission" as const, submissionId } })),
+            );
+          }
+        }
         const due = await listDueServerIds(env.DB, 200);
         if (due.length && env.VERIFY_QUEUE) {
           await env.VERIFY_QUEUE.sendBatch(due.map((serverId) => ({ body: { serverId } })));
@@ -211,14 +214,22 @@ export default {
           const stdioDue = await listDueStdioProbeIds(env.DB, limit);
           await enqueueStdioProbes(env, stdioDue);
         }
-        const github = await scanGitHubRepositories(env);
-        console.log(JSON.stringify({ path: "scheduled-github-scan", ...github }));
       })(),
     );
   },
   async queue(batch: MessageBatch<unknown>, env: Bindings): Promise<void> {
     for (const message of batch.messages) {
-      const body = message.body as { kind?: "stdio"; serverId?: string };
+      const body = message.body as { kind?: "stdio" | "submission"; serverId?: string; submissionId?: string };
+      if (body.kind === "submission" && body.submissionId) {
+        try {
+          await processSubmission(env, body.submissionId);
+          message.ack();
+        } catch (error) {
+          console.error(JSON.stringify({ path: "submission-queue", submissionId: body.submissionId, error: String(error) }));
+          message.retry();
+        }
+        continue;
+      }
       if (!body.serverId) {
         message.ack();
         continue;

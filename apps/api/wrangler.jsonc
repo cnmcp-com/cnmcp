@@ -42,7 +42,8 @@
   "queues": {
     "producers": [
       { "binding": "VERIFY_QUEUE", "queue": "cnmcp-verify" },
-      { "binding": "STDIO_PROBE_QUEUE", "queue": "cnmcp-stdio-probe" }
+      { "binding": "STDIO_PROBE_QUEUE", "queue": "cnmcp-stdio-probe" },
+      { "binding": "SUBMISSION_QUEUE", "queue": "cnmcp-submissions" }
     ],
     "consumers": [
       {
@@ -57,16 +58,17 @@
         "max_concurrency": 2,
         "max_retries": 2,
         "dead_letter_queue": "cnmcp-stdio-probe-dlq"
+      },
+      {
+        "queue": "cnmcp-submissions",
+        "max_batch_size": 4,
+        "max_batch_timeout": 30,
+        "max_concurrency": 2,
+        "max_retries": 3,
+        "dead_letter_queue": "cnmcp-submissions-dlq"
       }
     ]
   },
-  "workflows": [
-    {
-      "binding": "INGEST_WORKFLOW",
-      "name": "cnmcp-ingest",
-      "class_name": "IngestWorkflow"
-    }
-  ],
   "triggers": {
     "crons": ["17 */6 * * *"]
   },

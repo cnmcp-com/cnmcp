@@ -3,8 +3,8 @@ interface CloudflareEnv {
   EVIDENCE?: R2Bucket;
   VERIFY_QUEUE?: Queue<{ serverId: string }>;
   STDIO_PROBE_QUEUE?: Queue<{ kind: "stdio"; serverId: string }>;
+  SUBMISSION_QUEUE?: Queue<{ kind: "submission"; submissionId: string }>;
   STDIO_PROBE_CONTAINER?: DurableObjectNamespace<import("./src/stdio-container").StdioProbeContainer>;
-  INGEST_WORKFLOW: Workflow;
   ALLOWED_ORIGINS: string;
   GITHUB_TOKEN?: string;
   INTERNAL_API_TOKEN?: string;

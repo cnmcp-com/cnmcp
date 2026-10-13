@@ -31,7 +31,7 @@ export function stdioHandshakeOf(value: unknown): McpHandshake | null {
   };
 }
 
-export async function verifyServer(env: CloudflareEnv, serverId: string, stdioHandshake: McpHandshake | null = null): Promise<{ serverId: string; reason: string; score: number | null }> {
+export async function verifyServer(env: CloudflareEnv, serverId: string, providedHandshake: McpHandshake | null = null): Promise<{ serverId: string; reason: string; score: number | null }> {
   const server = await env.DB.prepare(
     `SELECT id, transport, claimed_tool_names, last_published_at, version_count FROM servers WHERE id = ?`,
   )
@@ -66,11 +66,11 @@ export async function verifyServer(env: CloudflareEnv, serverId: string, stdioHa
     tools: Array<{ name: string; description?: string; inputSchema?: unknown }>;
   } = { ok: false, error: "no_endpoint", latencyMs: null, protocolVersion: null, tools: [] };
 
-  const ranStdio = server.transport === "local" && stdioHandshake !== null;
-  if (ranStdio && stdioHandshake) {
-    handshake = stdioHandshake;
+  const ranStdio = server.transport === "local" && providedHandshake !== null;
+  if (ranStdio && providedHandshake) {
+    handshake = providedHandshake;
   } else if (server.transport === "remote" && endpoint?.url) {
-    handshake = await handshakeMcp(endpoint.url);
+    handshake = providedHandshake ?? (await handshakeMcp(endpoint.url));
     await env.DB.prepare(
       `UPDATE endpoints SET reachable_probe = ?, latency_ms = ?, last_checked_at = ?, last_error = ? WHERE id = ?`,
     )

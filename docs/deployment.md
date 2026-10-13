@@ -2,7 +2,7 @@
 
 CNMCP 使用 GitHub Actions 发布两个 Cloudflare Workers：
 
-- `cnmcp-api`：Hono API、Cron、Queue、Workflow，并绑定 D1 与 R2。
+- `cnmcp-api`：Hono API、Cron 与 Queue，并绑定 D1 与 R2。
 - `cnmcp-web`：通过 OpenNext 将 Next.js 15 应用发布到 Workers。
 
 推送到 `main` 后，工作流会先测试和构建 API，应用 D1 增量迁移并发布 API；API 健康检查通过后，再构建和发布网站。也可以在 GitHub Actions 页面手动运行 `Deploy`。
@@ -11,11 +11,21 @@ CNMCP 使用 GitHub Actions 发布两个 Cloudflare Workers：
 
 1. 确认域名 `cnmcp.com` 已接入当前 Cloudflare 账户。API 会按 Wrangler 配置创建 `api.cnmcp.com` Custom Domain；网站先发布到 `cnmcp-web` 的 `workers.dev` 地址。当前 `www.cnmcp.com` 仍在提供旧站内容，上线切换时需要先从旧 Pages 项目解绑该域名并删除冲突的 A/CNAME 记录，再到 `cnmcp-web` 的 Settings → Domains & Routes 添加 `www.cnmcp.com` Custom Domain。
 2. 保留已创建的 D1 数据库 `cnmcp`（ID `a648e64c-8857-4efe-90bb-20d4eb715698`）。不要新建同名空库。
-3. 确认 R2 bucket `cnmcp-evidence`、Queue `cnmcp-verify` 已存在。Wrangler 会部署 Worker 和 Workflow，但不会替你迁移已有对象数据。
-4. 在 `cnmcp-api` Worker 中配置两个 Secret：
+3. 确认 R2 bucket `cnmcp-evidence` 以及以下 Queue 已存在。Wrangler 会部署 Worker，但不会自动创建 Queue 或迁移已有对象数据。
+   - `cnmcp-verify`
+   - `cnmcp-stdio-probe` 与 `cnmcp-stdio-probe-dlq`
+   - `cnmcp-submissions` 与 `cnmcp-submissions-dlq`
+4. 在 `cnmcp-api` Worker 中配置 Secret：
    - `INTERNAL_API_TOKEN`：至少 32 字节的随机值；所有 `/internal/*` 请求使用 `Authorization: Bearer <token>`。
-   - `GITHUB_TOKEN`：建议使用只读 GitHub fine-grained token，仅需读取公开仓库元数据，用于提高定期变更扫描的 API 限额。
 5. 创建一个用于 GitHub Actions 的 Cloudflare API Token，并只授权当前账户/zone。至少需要 Workers Scripts、Workers Routes、Containers、D1、Queues、R2 的编辑权限，以及账户和 zone 的读取权限。
+
+首次发布提交队列前执行一次：
+
+```bash
+cd apps/api
+npx wrangler queues create cnmcp-submissions
+npx wrangler queues create cnmcp-submissions-dlq
+```
 
 API Worker 同时部署 `StdioProbeContainer` 镜像。发布环境需要 Docker，并且 Cloudflare Token 必须允许发布 Containers 及其镜像。部署后先保持 `STDIO_PROBE_ENABLED=false`，按照 [stdio 探测 MVP](./stdio-containers-mvp.md) 完成单项目和分批灰度，再开启定时任务。
 
@@ -24,7 +34,6 @@ API Worker 同时部署 `StdioProbeContainer` 镜像。发布环境需要 Docker
 ```bash
 cd apps/api
 npx wrangler secret put INTERNAL_API_TOKEN
-npx wrangler secret put GITHUB_TOKEN
 ```
 
 ## GitHub 配置
@@ -37,7 +46,7 @@ npx wrangler secret put GITHUB_TOKEN
 4. Settings → Actions → General 中保持 Actions 可运行，并把默认 `GITHUB_TOKEN` 权限定为 Read repository contents；当前工作流只申请 `contents: read`。
 5. 为 `main` 添加分支保护，要求 `CI / test` 通过后才能合并。
 
-`INTERNAL_API_TOKEN` 与运行时 `GITHUB_TOKEN` 应保存在 Cloudflare Worker Secrets，不需要复制到 GitHub Actions。
+`INTERNAL_API_TOKEN` 应保存在 Cloudflare Worker Secrets，不需要复制到 GitHub Actions。
 
 ## 发布顺序与恢复
 
