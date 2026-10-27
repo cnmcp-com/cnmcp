@@ -17,6 +17,8 @@ CNMCP 使用 GitHub Actions 发布两个 Cloudflare Workers：
    - `cnmcp-submissions` 与 `cnmcp-submissions-dlq`
 4. 在 `cnmcp-api` Worker 中配置 Secret：
    - `INTERNAL_API_TOKEN`：至少 32 字节的随机值；所有 `/internal/*` 请求使用 `Authorization: Bearer <token>`。
+   - `GITHUB_TOKEN`：已有的 GitHub API 令牌，入库时读取公开仓库元数据和 README。
+   - `GITHUB_CLIENT_ID` 与 `GITHUB_CLIENT_SECRET`：社区登录用的 GitHub OAuth App。回调地址为 `https://api.cnmcp.com/v1/auth/github/callback`。未配置时登录接口返回 503，只读页面和内部灌入仍可用。不要另建一套令牌名来替代 `GITHUB_TOKEN`。
 5. 创建一个用于 GitHub Actions 的 Cloudflare API Token，并只授权当前账户/zone。至少需要 Workers Scripts、Workers Routes、Containers、D1、Queues、R2 的编辑权限，以及账户和 zone 的读取权限。
 
 首次发布提交队列前执行一次：

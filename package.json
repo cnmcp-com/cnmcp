@@ -2,7 +2,7 @@
   "name": "cnmcp",
   "private": true,
   "version": "0.1.0",
-  "description": "CNMCP — 中文 MCP 可信评测与准入层",
+  "description": "CNMCP — 中文 AI 开源社区",
   "license": "Apache-2.0",
   "workspaces": [
     "apps/*",

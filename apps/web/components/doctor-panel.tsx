@@ -1,29 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { DEMO_CONFIG, runDoctor, type DoctorReport } from "@cnmcp/doctor";
-import type { CatalogIndex } from "@cnmcp/schema";
 
-import { buildDoctorSubmissionItems } from "@/lib/doctor-submission";
 import { toast } from "./toast";
 
-type CloudStatus = { tone: "ok" | "bad" | "info"; text: string; receipts?: string[] } | null;
-
-export function DoctorPanel({ apiUrl }: { apiUrl: string }) {
+export function DoctorPanel() {
   const [raw, setRaw] = useState("");
   const [report, setReport] = useState<DoctorReport | null>(null);
-  const [catalog, setCatalog] = useState<CatalogIndex["servers"]>([]);
-  const [indexError, setIndexError] = useState<string | null>(null);
   const [status, setStatus] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [cloudStatus, setCloudStatus] = useState<CloudStatus>(null);
-
-  useEffect(() => {
-    fetch(`${apiUrl}/data/servers-index.json`)
-      .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
-      .then((index: CatalogIndex) => setCatalog(index.servers ?? []))
-      .catch(() => setIndexError("目录索引暂不可用，密钥检测仍可离线完成。"));
-  }, [apiUrl]);
 
   useEffect(() => {
     try {
@@ -38,7 +24,7 @@ export function DoctorPanel({ apiUrl }: { apiUrl: string }) {
   }, []);
 
   function run() {
-    const computed = runDoctor(raw, catalog);
+    const computed = runDoctor(raw, []);
     setReport(computed);
     setStatus("完成 · 全部在本地完成");
   }
@@ -59,63 +45,6 @@ export function DoctorPanel({ apiUrl }: { apiUrl: string }) {
     toast("已复制修复后的配置");
   }
 
-  async function submitForCloudCheck() {
-    const computed = runDoctor(raw, catalog);
-    setReport(computed);
-    if (computed.parseError) {
-      setCloudStatus({ tone: "bad", text: "请先修复 JSON 格式，再提交云端检测。" });
-      return;
-    }
-    if (computed.secretCount > 0) {
-      setCloudStatus({ tone: "bad", text: "检测到疑似明文凭证。请先替换为环境变量占位符，本站不会上传这份配置。" });
-      return;
-    }
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(computed.redactedConfig ?? raw) as unknown;
-    } catch {
-      setCloudStatus({ tone: "bad", text: "配置无法解析，请修复后重试。" });
-      return;
-    }
-    const items = buildDoctorSubmissionItems(parsed);
-    if (!items.length) {
-      setCloudStatus({ tone: "bad", text: "没有找到可提交的 MCP 服务配置。" });
-      return;
-    }
-
-    setSubmitting(true);
-    setCloudStatus({ tone: "info", text: `正在提交 ${items.length} 项资源…` });
-    const receipts: string[] = [];
-    const failures: string[] = [];
-    for (const item of items) {
-      try {
-        const response = await fetch(`${apiUrl}/v1/submissions`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(item.payload),
-        });
-        const result = await response.json() as { id?: string; error?: { message?: string } };
-        if (!response.ok || !result.id) failures.push(`${item.key}：${result.error?.message ?? "提交失败"}`);
-        else receipts.push(result.id);
-      } catch {
-        failures.push(`${item.key}：网络请求失败`);
-      }
-    }
-    setSubmitting(false);
-    if (!receipts.length) {
-      setCloudStatus({ tone: "bad", text: failures.join("；") || "提交失败，请稍后重试。" });
-      return;
-    }
-    setCloudStatus({
-      tone: failures.length ? "info" : "ok",
-      text: failures.length
-        ? `已提交 ${receipts.length} 项，${failures.length} 项未提交：${failures.join("；")}`
-        : `已提交 ${receipts.length} 项，正在核对公开来源并进入检测队列。`,
-      receipts,
-    });
-  }
-
   return (
     <>
       <div className="doc">
@@ -127,10 +56,7 @@ export function DoctorPanel({ apiUrl }: { apiUrl: string }) {
           </div>
           <textarea
             value={raw}
-            onChange={(event) => {
-              setRaw(event.target.value);
-              setCloudStatus(null);
-            }}
+            onChange={(event) => setRaw(event.target.value)}
             spellCheck={false}
             aria-label="mcp.json 配置"
           />
@@ -148,7 +74,6 @@ export function DoctorPanel({ apiUrl }: { apiUrl: string }) {
                   if (!file) return;
                   setRaw(await file.text());
                   setReport(null);
-                  setCloudStatus(null);
                   setStatus(`已读取 ${file.name}`);
                   event.target.value = "";
                 }}
@@ -160,7 +85,6 @@ export function DoctorPanel({ apiUrl }: { apiUrl: string }) {
               onClick={() => {
                 setRaw(DEMO_CONFIG);
                 setReport(null);
-                setCloudStatus(null);
                 setStatus("");
               }}
             >
@@ -172,7 +96,6 @@ export function DoctorPanel({ apiUrl }: { apiUrl: string }) {
               onClick={() => {
                 setRaw("");
                 setReport(null);
-                setCloudStatus(null);
                 setStatus("");
               }}
             >
@@ -180,7 +103,6 @@ export function DoctorPanel({ apiUrl }: { apiUrl: string }) {
             </button>
             <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--tx-3)", fontFamily: "var(--mono)" }}>{status}</span>
           </div>
-          {indexError ? <p style={{ padding: "0 14px 12px", fontSize: 12, color: "var(--warn)" }}>{indexError}</p> : null}
         </div>
         <div>
           {!report ? (
@@ -261,9 +183,6 @@ export function DoctorPanel({ apiUrl }: { apiUrl: string }) {
                   <button type="button" className="btn btn-s btn-sm" onClick={copyFixed}>
                     复制修复后的配置
                   </button>
-                  <button type="button" className="btn btn-g btn-sm" onClick={submitForCloudCheck} disabled={submitting}>
-                    {submitting ? "正在提交…" : "提交云端检测"}
-                  </button>
                 </div>
               </>
             ) : null}
@@ -273,20 +192,11 @@ export function DoctorPanel({ apiUrl }: { apiUrl: string }) {
       </div>
       <section className="card doctor-cloud-check" aria-labelledby="cloud-check-title">
         <div>
-          <span className="section-kicker">可选 · 主动提交</span>
-          <h2 id="cloud-check-title">云端隔离检测与收录</h2>
-          <p>逐项提取当前配置中的公开包或 MCP 端点，重新获取公开资料并进入检测队列。提交记录只用于定位资源，不作为评分证据。</p>
-          <p className="doctor-cloud-note">不上传含疑似明文凭证的配置；需要环境变量或凭证的服务不会在公共容器中执行。</p>
+          <span className="section-kicker">本地检查</span>
+          <h2 id="cloud-check-title">配置不会上传</h2>
+          <p>这里只在浏览器里检查 mcp.json。要把一个 GitHub 仓库放进社区，请到提交页粘贴仓库地址。</p>
         </div>
-        <button type="button" className="btn btn-p" onClick={submitForCloudCheck} disabled={!raw.trim() || submitting}>
-          {submitting ? "正在提交…" : "提交当前配置检测"}
-        </button>
-        {cloudStatus ? (
-          <div className={`submit-status ${cloudStatus.tone}`} role="status">
-            <span>{cloudStatus.text}</span>
-            {cloudStatus.receipts?.length ? <small>回执：{cloudStatus.receipts.join("、")}</small> : null}
-          </div>
-        ) : null}
+        <Link className="btn btn-p" href="/submit">去提交 GitHub 仓库</Link>
       </section>
     </>
   );
