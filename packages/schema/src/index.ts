@@ -4,6 +4,29 @@ export { readmeToBlocks, sourceLabelOf } from "./present";
 export { blockedSourceSql, isOfficialPublisher, knownRankSql, matchPublisher, publisherCatalog } from "./publishers";
 export type { PublisherMatch, PublisherTier } from "./publishers";
 
+export {
+  SECURITY_LABEL,
+  SECURITY_NOTE,
+  SECURITY_STATUSES,
+  SUBMISSION_STATUSES,
+  inferTaxonomy,
+  projectSlugFromRepoKey,
+  publicSecurityStatus,
+} from "./community";
+export type {
+  CategoryRef,
+  McpProbeView,
+  ProjectCard,
+  ProjectDetail,
+  ProjectListResponse,
+  ProjectStatus,
+  ReviewItem,
+  ScanEvidence,
+  SecurityStatus,
+  SubmissionStatus,
+  TaxonomyEntry,
+} from "./community";
+
 export const ALGORITHM_VERSION = "v1.0";
 
 export const V1_WEIGHTS = {

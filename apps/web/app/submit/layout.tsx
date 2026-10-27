@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "提交 MCP 资源或更正",
-  description: "向 CNMCP 提交新的 MCP 资源、发布方更正或验证申诉。",
+  title: "提交项目",
+  description: "提交一个 GitHub 仓库，自动上架到 CNMCP。",
   robots: { index: false, follow: false },
 };
 

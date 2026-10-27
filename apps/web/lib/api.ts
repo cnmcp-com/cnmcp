@@ -1,54 +1,84 @@
-import type { ActivityItem, CatalogIndex, ServerDetail, ServerSummary } from "@cnmcp/schema";
+import type { ProjectDetail, ProjectListResponse, ReviewItem } from "@cnmcp/schema";
+
+import { getPublicApiUrl } from "./public-api";
 
 const API_URL = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8787";
 
-export function getPublicApiUrl(): string {
-  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8787";
-}
+export { getPublicApiUrl };
+
+export type CategoryItem = {
+  slug: string;
+  name: string;
+  description: string;
+  sortOrder: number;
+  projectCount: number;
+};
+
+export type ProjectTypeItem = {
+  slug: string;
+  name: string;
+  sortOrder: number;
+  enablesDynamicProbe: boolean;
+};
+
+export type PublicProfile = {
+  login: string;
+  avatarUrl: string | null;
+  name: string | null;
+  projects: ProjectListResponse["items"];
+  reviews: ReviewItem[];
+  collections: Array<{ id: string; title: string; isPublic: boolean; itemCount: number }>;
+};
+
+export type CollectionView = {
+  id: string;
+  title: string;
+  isPublic: boolean;
+  owner: { login: string };
+  items: ProjectListResponse["items"];
+};
 
 async function api<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, { next: { revalidate: 60 } });
-  if (!response.ok) {
-    throw new Error(`API ${response.status} ${path}`);
-  }
+  const response = await fetch(`${API_URL}${path}`, { next: { revalidate: 30 } });
+  if (!response.ok) throw new Error(`API ${response.status} ${path}`);
   return (await response.json()) as T;
 }
 
-export async function fetchStats(): Promise<{
-  total: number;
-  remote: number;
-  verified: number;
-  reachable: number;
-  dead: number;
-  localUntested: number;
-  unverifiable: number;
-  official: number;
-  staticChecked: number;
-  configured: number;
-  pricingKnown: number;
-  gradeA: number;
-  gradeB: number;
-  lastVerifiedAt: string | null;
-  probeLabel: string;
-}> {
-  return api("/v1/stats");
+export async function fetchProjects(search = ""): Promise<ProjectListResponse> {
+  return api(`/v1/projects${search ? `?${search}` : ""}`);
 }
 
-export async function fetchActivity(limit = 30): Promise<{ items: ActivityItem[] }> {
-  return api(`/v1/activity?limit=${limit}`);
-}
-
-export async function fetchDirectory(search: string): Promise<{ items: ServerSummary[]; total: number; nextCursor: string | null }> {
-  return api(`/v1/servers?${search}`);
-}
-
-export async function fetchServer(id: string): Promise<ServerDetail | null> {
-  const response = await fetch(`${API_URL}/v1/servers/${encodeURIComponent(id)}`, { next: { revalidate: 60 } });
+export async function fetchProject(slug: string): Promise<{ project: ProjectDetail; reviews: ReviewItem[] } | null> {
+  const response = await fetch(`${API_URL}/v1/projects/${encodeURIComponent(slug)}`, { next: { revalidate: 30 } });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`API ${response.status}`);
-  return (await response.json()) as ServerDetail;
+  return (await response.json()) as { project: ProjectDetail; reviews: ReviewItem[] };
 }
 
-export async function fetchCatalogIndex(): Promise<CatalogIndex> {
-  return api("/data/servers-index.json");
+export async function fetchCategories(includeEmpty = false): Promise<CategoryItem[]> {
+  const data = await api<{ items: CategoryItem[] }>(`/v1/categories${includeEmpty ? "?includeEmpty=1" : ""}`);
+  return data.items;
+}
+
+export async function fetchProjectTypes(): Promise<ProjectTypeItem[]> {
+  const data = await api<{ items: ProjectTypeItem[] }>("/v1/project-types");
+  return data.items;
+}
+
+export async function fetchProfile(login: string): Promise<PublicProfile | null> {
+  const response = await fetch(`${API_URL}/v1/users/${encodeURIComponent(login)}`, { next: { revalidate: 30 } });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`API ${response.status}`);
+  return (await response.json()) as PublicProfile;
+}
+
+export async function fetchCollection(id: string): Promise<CollectionView | null> {
+  const response = await fetch(`${API_URL}/v1/collections/${encodeURIComponent(id)}`, { next: { revalidate: 30 } });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`API ${response.status}`);
+  return (await response.json()) as CollectionView;
+}
+
+export async function fetchStats(): Promise<{ projects: number; pendingScans: number }> {
+  return api("/v1/stats");
 }

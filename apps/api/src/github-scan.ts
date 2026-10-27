@@ -37,10 +37,11 @@ export function githubRepositoryFromUrl(value: string | null | undefined): GitHu
   try {
     const url = new URL(value);
     if (url.hostname.toLowerCase() !== "github.com") return null;
-    const [owner, rawRepo] = url.pathname.split("/").filter(Boolean);
-    const repo = rawRepo?.replace(/\.git$/i, "");
+    const [rawOwner, rawRepo] = url.pathname.split("/").filter(Boolean);
+    const owner = rawOwner?.toLowerCase();
+    const repo = rawRepo?.replace(/\.git$/i, "").toLowerCase();
     if (!owner || !repo || !REPO_PART_RE.test(owner) || !REPO_PART_RE.test(repo)) return null;
-    const key = `${owner}/${repo}`.toLowerCase();
+    const key = `${owner}/${repo}`;
     return { key, url: `https://github.com/${owner}/${repo}`, apiUrl: `https://api.github.com/repos/${owner}/${repo}` };
   } catch {
     return null;

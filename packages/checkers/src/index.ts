@@ -25,3 +25,4 @@ export {
   type TrustAssessmentReason,
   type TrustVerdict,
 } from "./assessment";
+export { discoverMcpEndpoints, scanProjectText, type ProjectScanInput, type ProjectScanResult } from "./project-scan";

@@ -5,7 +5,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/servers", "/report", "/doctor", "/news", "/methodology"],
+        allow: ["/", "/projects", "/categories", "/search", "/submit", "/methodology", "/doctor"],
+        disallow: ["/me"],
       },
     ],
     sitemap: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.cnmcp.com"}/sitemap.xml`,
