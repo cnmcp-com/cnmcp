@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ProjectCard, ProjectDetail, ReviewItem, ScanEvidence } from "@cnmcp/schema";
-import { SECURITY_NOTE } from "@cnmcp/schema";
 
 import type { CategoryItem, ProjectTypeItem } from "@/lib/api";
 import { authHeaders, captureSessionFromHash, readSession } from "@/lib/browser-session";
@@ -13,10 +12,10 @@ import {
   clueString,
   detailTags,
   displayTitle,
-  evidenceCount,
   formatCompact,
   formatRelative,
   headerSummary,
+  isProgrammingLanguageTag,
   securityAxis,
   securityPanelTone,
   severityLabel,
@@ -26,12 +25,6 @@ import { ProjectCards } from "./project-list";
 import { IconBookmark, IconGitHub, IconLike, IconShare, IconShield, IconStar } from "./icons";
 
 type MeState = { liked: boolean; rating: { stars: number; note: string | null } | null; canEdit: boolean; collected: boolean };
-
-const MCP_STATUS: Record<string, string> = {
-  ok: "握手成功",
-  no_endpoint: "没有公开端点",
-  scan_failed: "这次没有跑成",
-};
 
 export function ProjectDetailView({
   project,
@@ -64,15 +57,16 @@ export function ProjectDetailView({
   const heading = displayTitle(project);
   const summary = headerSummary(project);
   const tags = detailTags(project);
-  const staticAxis = securityAxis(project.security.staticStatus, "static");
-  const dynamicAxis = securityAxis(project.security.dynamicStatus, "dynamic");
-  const tone = securityPanelTone(project.security.status, project.security.dynamicStatus);
+  const staticAxis = securityAxis(project.security.staticStatus);
+  const tone = securityPanelTone(project.security.staticStatus);
   const forks = clueNumber(project.security.clues, "forks");
   const openIssues = clueNumber(project.security.clues, "openIssues");
   const license = clueString(project.security.clues, "license");
   const defaultBranch = clueString(project.security.clues, "defaultBranch");
-  const evidenceTotal = evidenceCount(project.security.evidence, project.security.dynamicEvidence);
-  const introTopics = project.topics.filter((topic) => !tags.some((tag) => tag.toLowerCase() === topic.toLowerCase()));
+  const evidence = Array.isArray(project.security.evidence) ? project.security.evidence : [];
+  const introTopics = (Array.isArray(project.topics) ? project.topics : []).filter(
+    (topic) => !isProgrammingLanguageTag(topic, project.language) && !tags.some((tag) => tag.toLowerCase() === topic.toLowerCase()),
+  );
 
   useEffect(() => {
     captureSessionFromHash();
@@ -222,34 +216,24 @@ export function ProjectDetailView({
       <section className={`section-block security-panel tone-${tone}`} aria-labelledby="security-heading">
         <div className="security-head">
           <h2 id="security-heading"><IconShield className="icon" /> 安全结论</h2>
-          <p>{SECURITY_NOTE[project.security.status]}</p>
+          <p>{staticAxis.note}</p>
           <p className="security-when">{project.security.scannedAt ? `最近检查 ${formatDateShort(project.security.scannedAt)}` : "还没有完成检查"}</p>
         </div>
-        <div className="security-grid">
-          <article className={`security-cell tone-${staticAxis.tone}`}>
-            <span className="axis-k">静态分析</span>
-            <strong>{staticAxis.label}</strong>
-            <p>{staticAxis.note}</p>
-          </article>
-          <article className={`security-cell tone-${dynamicAxis.tone}`}>
-            <span className="axis-k">动态行为观察</span>
-            <strong>{dynamicAxis.label}</strong>
-            <p>{dynamicAxis.note}</p>
-          </article>
-        </div>
+        <article className={`security-cell tone-${staticAxis.tone}`}>
+          <span className="axis-k">静态分析</span>
+          <strong>{staticAxis.label}</strong>
+          <p>{staticAxis.note}</p>
+        </article>
         <details className="evidence">
-          <summary>查看证据（{evidenceTotal} 项）</summary>
-          {evidenceTotal ? (
+          <summary>查看证据（{evidence.length} 项）</summary>
+          {evidence.length ? (
             <ul>
-              {project.security.evidence.map((item) => (
-                <EvidenceRow key={`static-${item.code}-${item.subject}-${item.detail}`} item={item} source="静态" />
-              ))}
-              {project.security.dynamicEvidence.map((item, index) => (
-                <EvidenceRow key={`dynamic-${item.code}-${item.detail}-${index}`} item={item} source="动态" />
+              {evidence.map((item) => (
+                <EvidenceRow key={`${item.code}-${item.subject}-${item.detail}`} item={item} />
               ))}
             </ul>
           ) : (
-            <p>还没有检查证据。</p>
+            <p>还没有静态检查证据。</p>
           )}
         </details>
       </section>
@@ -261,26 +245,6 @@ export function ProjectDetailView({
           {project.homepage ? <p><a href={project.homepage} target="_blank" rel="noopener noreferrer">项目主页</a></p> : null}
           {introTopics.length ? <p className="muted">主题：{introTopics.join("、")}</p> : null}
         </div>
-        {project.mcp ? (
-          <div className="probe">
-            <h3>MCP 探测</h3>
-            <p className="muted">
-              {MCP_STATUS[project.mcp.status] ?? project.mcp.status}
-              {project.mcp.protocolVersion ? ` · ${project.mcp.protocolVersion}` : ""}
-              {project.mcp.latencyMs != null ? ` · ${project.mcp.latencyMs} ms` : ""}
-              {project.mcp.error ? ` · ${project.mcp.error}` : ""}
-            </p>
-            {project.mcp.tools.length ? (
-              <ul className="tool-list">
-                {project.mcp.tools.map((tool) => (
-                  <li key={tool.name}><b>{tool.name}</b> {tool.description}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="muted">还没有工具列表。</p>
-            )}
-          </div>
-        ) : null}
       </section>
 
       <section className="section-block" aria-labelledby="snapshot-heading">
@@ -425,11 +389,11 @@ export function ProjectDetailView({
   );
 }
 
-function EvidenceRow({ item, source }: { item: ScanEvidence; source: string }) {
+function EvidenceRow({ item }: { item: ScanEvidence }) {
   return (
     <li>
       <span className={`sev sev-${item.severity}`}>{severityLabel(item.severity)}</span>
-      <span className="mono">{source} · {item.code}</span>
+      <span className="mono">{item.code}</span>
       <span>{item.detail}</span>
     </li>
   );

@@ -116,6 +116,12 @@ export type StoredProject = {
   status: string;
 };
 
+function stringList(value: string | null | undefined): string[] {
+  const parsed = parseJson<unknown>(value, []);
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter((item): item is string => typeof item === "string");
+}
+
 function cardOf(row: ProjectRow): ProjectCard {
   const securityStatus = publicSecurityStatus(row.static_status, row.dynamic_status);
   return {
@@ -129,7 +135,7 @@ function cardOf(row: ProjectRow): ProjectCard {
     language: row.language,
     category: row.primary_category_slug && row.category_name ? { slug: row.primary_category_slug, name: row.category_name } : null,
     type: row.primary_type_slug && row.type_name ? { slug: row.primary_type_slug, name: row.type_name } : null,
-    tags: parseJson<string[]>(row.tags_json, []),
+    tags: stringList(row.tags_json),
     securityStatus,
     likeCount: row.like_count ?? 0,
     ratingAvg: row.rating_avg == null ? null : Math.round(Number(row.rating_avg) * 10) / 10,
@@ -326,7 +332,7 @@ export async function getStoredProject(db: SqlDatabase, id: string): Promise<Sto
     title: row.title,
     primaryCategorySlug: row.primary_category_slug,
     primaryTypeSlug: row.primary_type_slug,
-    tags: parseJson<string[]>(row.tags_json, []),
+    tags: stringList(row.tags_json),
     status: row.status,
   };
 }
@@ -355,7 +361,7 @@ export async function getStoredProjectBySlug(db: SqlDatabase, slug: string): Pro
     title: row.title,
     primaryCategorySlug: row.primary_category_slug,
     primaryTypeSlug: row.primary_type_slug,
-    tags: parseJson<string[]>(row.tags_json, []),
+    tags: stringList(row.tags_json),
     status: row.status,
     submittedBy: row.submitted_by,
   };
@@ -590,7 +596,7 @@ export async function getProjectDetail(db: SqlDatabase, slug: string): Promise<{
     ...card,
     status: row.status === "taken_down" ? "taken_down" : "listed",
     topics: parseJson<string[]>(row.topics_json, []),
-    tags: parseJson<string[]>(row.tags_json, []),
+    tags: stringList(row.tags_json),
     homepage: row.homepage,
     archived: row.archived === 1,
     pushedAt: row.pushed_at,

@@ -2643,7 +2643,7 @@ html { scrollbar-color: var(--border-2) transparent; }
 .security-head h2 { margin: 0; }
 .security-head p, .security-cell p, .axis-k { color: var(--axis, var(--tx-2)); }
 .security-when { font-size: 12.5px; }
-.security-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.security-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .security-cell {
   background: color-mix(in srgb, var(--surface) 78%, transparent);
   border-radius: 10px;

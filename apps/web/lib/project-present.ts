@@ -1,4 +1,4 @@
-import type { ProjectCard, ProjectDetail, ScanEvidence, SecurityStatus } from "@cnmcp/schema";
+import type { ProjectCard, ScanEvidence } from "@cnmcp/schema";
 
 export type SecurityTone = "ok" | "warn" | "bad" | "muted";
 
@@ -9,42 +9,51 @@ export type SecurityAxis = {
 };
 
 const AXIS_COPY: Record<string, SecurityAxis> = {
-  clear: { label: "未发现明显风险", note: "这一侧没有发现高风险信号。", tone: "ok" },
+  clear: { label: "未发现明显风险", note: "线索收集和静态扫描没有发现高风险信号。", tone: "ok" },
   warn: { label: "需要留意", note: "有需要留意的信号。项目仍保持上架。", tone: "warn" },
   risk: { label: "存在风险线索", note: "发现风险线索。默认仍上架，由读者自行判断。", tone: "bad" },
   pending: { label: "检查未完成", note: "还在检查。这不是风险结论。", tone: "muted" },
   scan_failed: { label: "检查未完成", note: "这次没有跑成。这不是风险结论。", tone: "muted" },
-  skipped: { label: "未做这项检查", note: "这一侧没有运行。这不是风险结论。", tone: "muted" },
+  skipped: { label: "未做静态检查", note: "静态扫描没有运行。这不是风险结论。", tone: "muted" },
 };
 
-export function securityAxis(status: string | null | undefined, kind: "static" | "dynamic"): SecurityAxis {
+const PROGRAMMING_LANGUAGES = new Set([
+  "python", "typescript", "javascript", "rust", "go", "golang", "java", "kotlin", "swift",
+  "ruby", "php", "c", "c++", "cpp", "c#", "csharp", "scala", "haskell", "elixir", "erlang",
+  "dart", "lua", "r", "matlab", "shell", "bash", "zsh", "powershell", "html", "css", "scss",
+  "sass", "less", "solidity", "zig", "nim", "ocaml", "clojure", "perl", "groovy",
+  "objective-c", "objectivec", "objc", "jupyter notebook", "sql", "tsx", "jsx", "julia",
+  "fortran", "lisp", "scheme", "pascal", "delphi", "f#", "fsharp", "vb.net", "assembly",
+]);
+
+export function securityAxis(status: string | null | undefined): SecurityAxis {
   const key = status && status in AXIS_COPY ? status : "pending";
-  const axis = AXIS_COPY[key] ?? AXIS_COPY.pending!;
-  if (key === "skipped" && kind === "dynamic") {
-    return { label: "未做动态检查", note: "当前类型不做 MCP 动态检查。这不是风险结论。", tone: "muted" };
-  }
-  if (key === "skipped" && kind === "static") {
-    return { label: "未做静态检查", note: "静态扫描没有运行。这不是风险结论。", tone: "muted" };
-  }
-  if (key === "clear" && kind === "static") {
-    return { label: "未发现明显风险", note: "线索收集和静态扫描没有发现高风险信号。", tone: "ok" };
-  }
-  if (key === "clear" && kind === "dynamic") {
-    return { label: "未发现明显风险", note: "动态检查没有发现高风险信号。", tone: "ok" };
-  }
-  return axis;
+  return AXIS_COPY[key] ?? AXIS_COPY.pending!;
 }
 
-/** 整页底色只在两侧都给出明确结论时用语义色。动态跳过时不把整页涂成安全。 */
-export function securityPanelTone(status: SecurityStatus, dynamicStatus: string): SecurityTone {
-  if (status === "risk") return "bad";
-  if (status === "warn") return "warn";
-  if (status === "clear" && dynamicStatus === "clear") return "ok";
-  return "muted";
+export function securityPanelTone(status: string | null | undefined): SecurityTone {
+  return securityAxis(status).tone;
 }
 
-export function evidenceCount(evidence: ScanEvidence[], dynamicEvidence: ScanEvidence[]): number {
-  return evidence.length + dynamicEvidence.length;
+export function isProgrammingLanguageTag(value: string, language?: string | null): boolean {
+  const key = value.trim().toLowerCase();
+  if (!key) return false;
+  if (PROGRAMMING_LANGUAGES.has(key)) return true;
+  return Boolean(language && key === language.trim().toLowerCase());
+}
+
+function asTagList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string");
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    try {
+      return asTagList(JSON.parse(trimmed) as unknown);
+    } catch {
+      return [trimmed];
+    }
+  }
+  return [];
 }
 
 export function severityLabel(severity: ScanEvidence["severity"] | string): string {
@@ -69,19 +78,25 @@ export function cardBlurb(project: Pick<ProjectCard, "title" | "summary" | "reco
   return headerSummary(project) ?? "还没有简介。";
 }
 
-export function detailTags(project: Pick<ProjectDetail, "type" | "tags">): string[] {
+export function detailTags(project: {
+  type?: { name?: string | null } | null;
+  tags?: unknown;
+  tags_json?: unknown;
+  language?: string | null;
+}): string[] {
   const seen = new Set<string>();
   const tags: string[] = [];
   const push = (value: string | null | undefined) => {
     const text = value?.trim();
-    if (!text) return;
+    if (!text || isProgrammingLanguageTag(text, project.language)) return;
     const key = text.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
     tags.push(text);
   };
   push(project.type?.name);
-  for (const tag of project.tags) push(tag);
+  const rawTags = project.tags ?? project.tags_json;
+  for (const tag of asTagList(rawTags)) push(tag);
   return tags;
 }
 
