@@ -10,7 +10,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.cnmcp.com"),
   title: { default: "CNMCP — 中文 AI 开源社区", template: "%s | CNMCP" },
-  description: "发现 AI 相关开源项目，按业务领域和项目类型筛选，并查看每个仓库的安全检查摘要。",
+  description: "发现 AI 相关开源项目。按领域浏览，类型以标签呈现，安全结论写在项目页。",
   keywords: ["AI", "开源", "MCP", "skill", "agent", "中文"],
   icons: { icon: "/cnmcp-icon.svg" },
   openGraph: {
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     locale: "zh_CN",
     siteName: "CNMCP",
     title: "CNMCP — 中文 AI 开源社区",
-    description: "发现 skill、agent、MCP、教程和软件，并查看安全检查状态。",
+    description: "按领域发现 skill、agent、MCP、教程和软件。安全结论在项目页。",
   },
 };
 

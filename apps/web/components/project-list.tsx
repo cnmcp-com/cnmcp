@@ -1,88 +1,95 @@
 import Link from "next/link";
-import { SECURITY_LABEL, SECURITY_STATUSES, type ProjectCard, type SecurityStatus } from "@cnmcp/schema";
+import type { ProjectCard } from "@cnmcp/schema";
 
-import type { CategoryItem, ProjectTypeItem } from "@/lib/api";
+import type { CategoryItem } from "@/lib/api";
+import { cardBlurb, detailTags, displayTitle, formatCompact } from "@/lib/project-present";
+import { IconCode, IconGitHub, IconStar } from "./icons";
 
-function pill(status: SecurityStatus): string {
-  if (status === "clear") return "p-ok";
-  if (status === "warn") return "p-warn";
-  if (status === "risk") return "p-bad";
-  return "p-info";
-}
-
-export function ProjectCards({ items }: { items: ProjectCard[] }) {
-  if (!items.length) return <div className="empty card">还没有可展示的项目。可以换个筛选，或提交一个 GitHub 仓库。</div>;
+export function ProjectCards({
+  items,
+  variant = "list",
+  empty = "还没有可展示的项目。",
+}: {
+  items: ProjectCard[];
+  variant?: "list" | "related";
+  empty?: string;
+}) {
+  if (!items.length) return <div className="empty">{empty}</div>;
   return (
-    <div className="project-grid">
-      {items.map((item) => (
-        <Link key={item.slug} href={`/projects/${item.slug}`} className="card project-card">
-          <div className="meta-row">
-            {item.category ? <span className="pill p-gray">{item.category.name}</span> : <span className="pill p-gray">未分类</span>}
-            {item.type ? <span className="pill p-info">{item.type.name}</span> : null}
-            <span className={`pill ${pill(item.securityStatus)}`}>{SECURITY_LABEL[item.securityStatus]}</span>
-          </div>
-          <h2>{item.title}</h2>
-          <p>{item.recommendation || item.summary || item.repoKey}</p>
-          <div className="meta-row muted">
-            <span>{item.repoKey}</span>
-            <span>★ {item.stars}</span>
-            <span>赞 {item.likeCount}</span>
-            {item.ratingAvg != null ? <span>{item.ratingAvg} 分</span> : null}
+    <div className={variant === "related" ? "related-grid" : "hg-list"}>
+      {items.map((item) => {
+        const Title = variant === "related" ? "h3" : "h2";
+        return (
+        <Link key={item.slug} href={`/projects/${item.slug}`} className={variant === "related" ? "related-card" : "hg-item"}>
+          <Title>{displayTitle(item)}</Title>
+          {variant === "list" ? (
+            <p className="hg-repo">
+              <IconGitHub className="icon" />
+              <span>{item.repoKey}</span>
+            </p>
+          ) : null}
+          <p className="hg-desc">{cardBlurb(item)}</p>
+          <div className="hg-meta">
+            {item.language ? (
+              <span>
+                <IconCode className="icon" />
+                {item.language}
+              </span>
+            ) : null}
+            <span>
+              <IconStar className="icon" />
+              {formatCompact(item.stars)}
+            </span>
+            {detailTags(item).slice(0, 4).map((tag) => (
+              <span key={tag} className="tag">{tag}</span>
+            ))}
           </div>
         </Link>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
-function hrefFor(base: string, current: Record<string, string | undefined>, key: string, value?: string) {
-  const next = new URLSearchParams();
-  for (const [name, item] of Object.entries(current)) {
-    if (!item || name === key) continue;
-    next.set(name, item);
-  }
-  if (value) next.set(key, value);
-  const query = next.toString();
-  return query ? `${base}?${query}` : base;
-}
-
-export function ProjectFilters({
-  base,
+export function DiscoveryBar({
   categories,
-  types,
-  selected,
+  selectedSlug,
+  hrefForCategory,
+  sort,
 }: {
-  base: string;
   categories: CategoryItem[];
-  types: ProjectTypeItem[];
-  selected: { q?: string; category?: string; type?: string; security?: string; sort?: string };
+  selectedSlug?: string;
+  hrefForCategory: (slug?: string) => string;
+  sort?: { value: "latest" | "hot"; href: (value: "latest" | "hot") => string };
 }) {
   return (
-    <div className="stack">
-      <div className="filter-row" aria-label="业务分类">
-        <Link href={hrefFor(base, selected, "category")} className={selected.category ? undefined : "on"}>全部领域</Link>
-        {categories.map((category) => (
-          <Link key={category.slug} href={hrefFor(base, selected, "category", category.slug)} className={selected.category === category.slug ? "on" : undefined}>
-            {category.name}
+    <div className="discover-bar">
+      <div className="domain-bar">
+        <span className="domain-label" id="domain-label">领域</span>
+        <div className="domain-chips" role="group" aria-labelledby="domain-label">
+          <Link href={hrefForCategory()} className={selectedSlug ? undefined : "on"} aria-current={selectedSlug ? undefined : "true"}>
+            全部
           </Link>
-        ))}
+          {categories.map((category) => {
+            const on = selectedSlug === category.slug;
+            return (
+              <Link key={category.slug} href={hrefForCategory(category.slug)} className={on ? "on" : undefined} aria-current={on ? "true" : undefined}>
+                {category.name}
+              </Link>
+            );
+          })}
+        </div>
       </div>
-      <div className="filter-row" aria-label="项目类型">
-        <Link href={hrefFor(base, selected, "type")} className={selected.type ? undefined : "on"}>全部类型</Link>
-        {types.map((type) => (
-          <Link key={type.slug} href={hrefFor(base, selected, "type", type.slug)} className={selected.type === type.slug ? "on" : undefined}>
-            {type.name}
+      {sort ? (
+        <div className="sort-switch" role="group" aria-label="排序">
+          <Link href={sort.href("latest")} className={sort.value === "latest" ? "on" : undefined} aria-current={sort.value === "latest" ? "true" : undefined}>
+            最新
           </Link>
-        ))}
-      </div>
-      <div className="filter-row" aria-label="安全状态">
-        <Link href={hrefFor(base, selected, "security")} className={selected.security ? undefined : "on"}>全部安全状态</Link>
-        {SECURITY_STATUSES.map((status) => (
-          <Link key={status} href={hrefFor(base, selected, "security", status)} className={selected.security === status ? "on" : undefined}>
-            {SECURITY_LABEL[status]}
+          <Link href={sort.href("hot")} className={sort.value === "hot" ? "on" : undefined} aria-current={sort.value === "hot" ? "true" : undefined}>
+            热门
           </Link>
-        ))}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }
