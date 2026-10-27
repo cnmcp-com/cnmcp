@@ -1,4 +1,4 @@
-import type { ProjectDetail, ProjectListResponse, ReviewItem } from "@cnmcp/schema";
+import type { ProjectCard, ProjectDetail, ProjectListResponse, ReviewItem } from "@cnmcp/schema";
 
 import { getPublicApiUrl } from "./public-api";
 
@@ -46,6 +46,30 @@ async function api<T>(path: string): Promise<T> {
 
 export async function fetchProjects(search = ""): Promise<ProjectListResponse> {
   return api(`/v1/projects${search ? `?${search}` : ""}`);
+}
+
+export async function fetchRelatedProjects(project: Pick<ProjectCard, "slug" | "category" | "type">): Promise<ProjectCard[]> {
+  const queries: string[] = [];
+  if (project.category?.slug) {
+    const params = new URLSearchParams({ category: project.category.slug, limit: "8" });
+    queries.push(params.toString());
+  }
+  if (project.type?.slug) {
+    const params = new URLSearchParams({ type: project.type.slug, limit: "8" });
+    queries.push(params.toString());
+  }
+  const lists = await Promise.all(queries.map((query) => fetchProjects(query).catch(() => ({ items: [], total: 0, nextCursor: null }))));
+  const seen = new Set<string>([project.slug]);
+  const related: ProjectCard[] = [];
+  for (const list of lists) {
+    for (const item of list.items) {
+      if (seen.has(item.slug)) continue;
+      seen.add(item.slug);
+      related.push(item);
+      if (related.length >= 4) return related;
+    }
+  }
+  return related;
 }
 
 export async function fetchProject(slug: string): Promise<{ project: ProjectDetail; reviews: ReviewItem[] } | null> {

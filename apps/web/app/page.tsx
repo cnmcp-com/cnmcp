@@ -1,53 +1,47 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { ProjectCards, ProjectFilters } from "@/components/project-list";
-import { fetchCategories, fetchProjects, fetchProjectTypes } from "@/lib/api";
+import { DiscoveryBar, ProjectCards } from "@/components/project-list";
+import { fetchCategories, fetchProjects } from "@/lib/api";
 
 export const metadata: Metadata = {
   title: "发现 AI 开源项目",
-  description: "按最新和热度浏览 AI 相关开源项目，并按业务领域、项目类型和安全状态筛选。",
+  description: "按领域浏览 AI 开源项目。类型显示为标签，安全结论在项目页。",
   alternates: { canonical: "/" },
 };
 
-type Search = { category?: string; type?: string; security?: string; sort?: string };
+type Search = { category?: string; sort?: string };
+
+function listHref(category: string | undefined, sort: "latest" | "hot") {
+  const next = new URLSearchParams();
+  if (category) next.set("category", category);
+  if (sort === "hot") next.set("sort", "hot");
+  const query = next.toString();
+  return query ? `/?${query}` : "/";
+}
 
 export default async function HomePage({ searchParams }: { searchParams: Promise<Search> }) {
   const params = await searchParams;
+  const sort = params.sort === "hot" ? "hot" : "latest";
   const query = new URLSearchParams();
   if (params.category) query.set("category", params.category);
-  if (params.type) query.set("type", params.type);
-  if (params.security) query.set("security", params.security);
-  query.set("sort", params.sort === "hot" ? "hot" : "latest");
-  const [categories, types, list] = await Promise.all([
+  query.set("sort", sort);
+  const [categories, list] = await Promise.all([
     fetchCategories().catch(() => []),
-    fetchProjectTypes().catch(() => []),
     fetchProjects(query.toString()).catch(() => ({ items: [], total: 0, nextCursor: null })),
   ]);
-  const selected = { category: params.category, type: params.type, security: params.security, sort: query.get("sort") ?? "latest" };
-  const sortHref = (sort: string) => {
-    const next = new URLSearchParams(query);
-    next.set("sort", sort);
-    return `/?${next.toString()}`;
-  };
+  const current = categories.find((item) => item.slug === params.category);
 
   return (
-    <div className="wrap stack" style={{ paddingBottom: 48 }}>
-      <section className="community-hero">
-        <span className="eyebrow"><i />AI 相关开源</span>
-        <h1>发现值得一看的中文 AI 项目。</h1>
-        <p>按业务领域和项目类型浏览 skill、agent、教程、软件和 MCP。每个项目都会做线索收集和静态扫描；只有 MCP 才会做动态检查。检查还没完成，不代表有风险。</p>
-        <div className="meta-row">
-          <Link className="btn btn-p" href="/submit">提交 GitHub 仓库</Link>
-          <Link className="btn btn-s" href="/search">搜索</Link>
-        </div>
-      </section>
-      <div className="filter-row">
-        <Link href={sortHref("latest")} className={selected.sort === "latest" ? "on" : undefined}>最新</Link>
-        <Link href={sortHref("hot")} className={selected.sort === "hot" ? "on" : undefined}>热</Link>
-      </div>
-      <ProjectFilters base="/" categories={categories} types={types} selected={selected} />
-      <ProjectCards items={list.items} />
+    <div className="wrap discover">
+      <h1 className="sr-only">发现 AI 开源项目</h1>
+      <DiscoveryBar
+        categories={categories}
+        selectedSlug={params.category}
+        hrefForCategory={(slug) => listHref(slug, sort)}
+        sort={{ value: sort, href: (value) => listHref(params.category, value) }}
+      />
+      {current?.description ? <p className="domain-note">{current.description}</p> : null}
+      <ProjectCards items={list.items} empty="这个领域还没有项目。可以换个领域，或提交一个 GitHub 仓库。" />
     </div>
   );
 }
