@@ -129,6 +129,7 @@ function cardOf(row: ProjectRow): ProjectCard {
     language: row.language,
     category: row.primary_category_slug && row.category_name ? { slug: row.primary_category_slug, name: row.category_name } : null,
     type: row.primary_type_slug && row.type_name ? { slug: row.primary_type_slug, name: row.type_name } : null,
+    tags: parseJson<string[]>(row.tags_json, []),
     securityStatus,
     likeCount: row.like_count ?? 0,
     ratingAvg: row.rating_avg == null ? null : Math.round(Number(row.rating_avg) * 10) / 10,

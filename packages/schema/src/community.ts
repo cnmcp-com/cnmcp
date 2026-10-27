@@ -49,6 +49,7 @@ export type ProjectCard = {
   language: string | null;
   category: CategoryRef;
   type: CategoryRef;
+  tags: string[];
   securityStatus: SecurityStatus;
   likeCount: number;
   ratingAvg: number | null;

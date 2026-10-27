@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ProjectCard } from "@cnmcp/schema";
 
 import type { CategoryItem } from "@/lib/api";
-import { cardBlurb, displayTitle, formatCompact } from "@/lib/project-present";
+import { cardBlurb, detailTags, displayTitle, formatCompact } from "@/lib/project-present";
 import { IconCode, IconGitHub, IconStar } from "./icons";
 
 export function ProjectCards({
@@ -40,7 +40,9 @@ export function ProjectCards({
               <IconStar className="icon" />
               {formatCompact(item.stars)}
             </span>
-            {item.type ? <span className="tag">{item.type.name}</span> : null}
+            {detailTags(item).slice(0, 4).map((tag) => (
+              <span key={tag} className="tag">{tag}</span>
+            ))}
           </div>
         </Link>
         );
