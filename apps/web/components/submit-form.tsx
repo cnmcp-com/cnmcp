@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { authHeaders, readSession } from "@/lib/browser-session";
+import { authHeaders, captureSessionFromHash, readSession } from "@/lib/browser-session";
 import { getPublicApiUrl, githubLoginUrl } from "@/lib/public-api";
 
 export function SubmitForm() {
@@ -13,7 +13,10 @@ export function SubmitForm() {
   const [slug, setSlug] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
-  useEffect(() => { setSignedIn(Boolean(readSession())); }, []);
+  useEffect(() => {
+    captureSessionFromHash();
+    setSignedIn(Boolean(readSession()));
+  }, []);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();

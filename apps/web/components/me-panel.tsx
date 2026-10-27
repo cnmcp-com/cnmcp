@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { ProjectCard, ReviewItem } from "@cnmcp/schema";
 
 import { ProjectCards } from "@/components/project-list";
-import { authHeaders, readSession, writeSession } from "@/lib/browser-session";
+import { authHeaders, captureSessionFromHash, readSession, writeSession } from "@/lib/browser-session";
 import { getPublicApiUrl, githubLoginUrl } from "@/lib/public-api";
 
 type MeResponse = {
@@ -47,6 +47,7 @@ export function MePanel() {
   }
 
   useEffect(() => {
+    captureSessionFromHash();
     setAuthed(Boolean(readSession()));
     setReady(true);
     load();

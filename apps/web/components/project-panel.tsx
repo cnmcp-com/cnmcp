@@ -6,7 +6,7 @@ import type { ProjectDetail, ReviewItem } from "@cnmcp/schema";
 import { SECURITY_LABEL, SECURITY_NOTE } from "@cnmcp/schema";
 
 import type { CategoryItem, ProjectTypeItem } from "@/lib/api";
-import { authHeaders, readSession } from "@/lib/browser-session";
+import { authHeaders, captureSessionFromHash, readSession } from "@/lib/browser-session";
 import { getPublicApiUrl, githubLoginUrl } from "@/lib/public-api";
 
 type MeState = { liked: boolean; rating: { stars: number; note: string | null } | null; canEdit: boolean };
@@ -37,6 +37,7 @@ export function ProjectPanel({
   const listed = project.status === "listed";
 
   useEffect(() => {
+    captureSessionFromHash();
     setAuthed(Boolean(readSession()));
     if (!readSession()) return;
     fetch(`${api}/v1/projects/${project.slug}/me`, { headers: authHeaders() })

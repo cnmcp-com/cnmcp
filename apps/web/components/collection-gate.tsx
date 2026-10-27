@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { ProjectCards } from "@/components/project-list";
 import type { CollectionView } from "@/lib/api";
-import { authHeaders, readSession } from "@/lib/browser-session";
+import { authHeaders, captureSessionFromHash, readSession } from "@/lib/browser-session";
 import { getPublicApiUrl } from "@/lib/public-api";
 
 export function CollectionGate({ id, initial }: { id: string; initial: CollectionView | null }) {
@@ -12,6 +12,7 @@ export function CollectionGate({ id, initial }: { id: string; initial: Collectio
   const [missing, setMissing] = useState(false);
 
   useEffect(() => {
+    captureSessionFromHash();
     if (initial || !readSession()) {
       if (!initial) setMissing(true);
       return;
