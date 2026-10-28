@@ -1,120 +1,145 @@
-import type { CheckerStatus, Grade, ServerStatus, Transport, V1Checker } from "@cnmcp/schema";
+import type { CategoryItem } from "./api";
 
-export const GRADE_TEXT: Record<Grade, string> = {
-  A: "动态验证良好",
-  B: "动态验证通过",
-  C: "需谨慎",
-  D: "动态验证较差",
-};
+/* ============================================================
+   发现列表 URL：只保留关键词、领域和分页。
+   类型、安全、排序不进入链接，也不再作为列表查询参数。
+   ============================================================ */
 
-export const BUSINESS_CATEGORIES = [
-  { id: "development", label: "软件开发", description: "代码、版本控制与工程交付" },
-  { id: "data", label: "数据分析", description: "数据库、查询与商业分析" },
-  { id: "research", label: "研究检索", description: "搜索、知识库与文档处理" },
-  { id: "content", label: "内容创作", description: "写作、设计、图像与视频" },
-  { id: "operations", label: "市场运营", description: "营销、销售、SEO 与客户管理" },
-  { id: "productivity", label: "办公协作", description: "邮件、日历、项目与团队协作" },
-  { id: "automation", label: "自动化", description: "工作流、浏览器与智能体执行" },
-  { id: "security", label: "安全合规", description: "扫描、审计与风险识别" },
-] as const;
+export type ListParams = Record<string, string | undefined>;
 
-export const GRADE_PILL: Record<Grade, string> = {
-  A: "p-ok",
-  B: "p-info",
-  C: "p-warn",
-  D: "p-bad",
-};
+const LIST_KEYS = ["q", "category", "cursor"] as const;
 
-export const GRADE_COLOR: Record<Grade, string> = {
-  A: "var(--ok)",
-  B: "var(--info)",
-  C: "var(--warn)",
-  D: "var(--bad)",
-};
-
-export const CHECKER_LABELS: Record<V1Checker, string> = {
-  alive: "存活探测",
-  contract: "工具契约实测",
-  probe: "本站探测可达",
-  freshness: "维护活跃度",
-};
-
-export const STATUS_UI: Record<CheckerStatus, { text: string; dot: string; pill: string }> = {
-  pass: { text: "通过", dot: "d-ok", pill: "p-ok" },
-  warn: { text: "提示", dot: "d-warn", pill: "p-warn" },
-  fail: { text: "未通过", dot: "d-bad", pill: "p-bad" },
-  skip: { text: "不适用", dot: "d-na", pill: "p-gray" },
-};
-
-export const CHANGE_TYPE: Record<string, string> = {
-  tool_added: "新增工具",
-  tool_removed: "移除工具",
-  description_changed: "描述变更",
-  schema_changed: "Schema 变更",
-  repository_updated: "代码仓库更新",
-  repository_archived: "代码仓库已归档",
-  repository_restored: "代码仓库恢复维护",
-  default_branch_changed: "默认分支变更",
-};
-
-export function formatNumber(n: number): string {
-  return n.toLocaleString("zh-CN");
+/**
+ * 拼发现列表链接。
+ * 切换领域时清掉 cursor；空值从 URL 删除。
+ * current / patch 里的 type、security、sort 会被丢掉。
+ */
+export function buildListHref(path: string, current: ListParams, patch: ListParams = {}): string {
+  const merged: ListParams = { ...current, ...patch };
+  if ("category" in patch) merged.cursor = undefined;
+  const next = new URLSearchParams();
+  for (const key of LIST_KEYS) {
+    const value = merged[key];
+    if (value) next.set(key, value);
+  }
+  const query = next.toString();
+  return query ? `${path}?${query}` : path;
 }
 
-export function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "尚未验证";
-  return iso.replace("T", " ").slice(0, 16);
+/* ============================================================
+   项目类型（二级分类）视觉编码：徽章 / tile / 字符
+   ============================================================ */
+
+export const TYPE_ORDER = ["skill", "agent", "tutorial", "software", "mcp"] as const;
+
+export function typeBadgeClass(slug: string | null | undefined): string {
+  switch (slug) {
+    case "skill":
+      return "b-skill";
+    case "agent":
+      return "b-agent";
+    case "tutorial":
+      return "b-tutorial";
+    case "software":
+      return "b-software";
+    case "mcp":
+      return "b-mcp";
+    default:
+      return "b-none";
+  }
 }
+
+export function typeTileClass(slug: string | null | undefined): string {
+  return slug && (TYPE_ORDER as readonly string[]).includes(slug) ? `t-${slug}` : "t-none";
+}
+
+const TILE_LETTER: Record<string, string> = {
+  skill: "S",
+  agent: "A",
+  tutorial: "T",
+  software: "软",
+  mcp: "M",
+};
+
+export function typeTileLetter(slug: string | null | undefined, name?: string | null): string {
+  if (slug && TILE_LETTER[slug]) return TILE_LETTER[slug];
+  return name?.trim().slice(0, 1) || "?";
+}
+
+/* ============================================================
+   安全五态 pill：只用于项目详情，不出现在发现列表卡片上。
+   ============================================================ */
+
+export type SecurityKey = "clear" | "warn" | "risk" | "pending" | "scan_failed";
+
+export function securityKey(status: string | null | undefined): SecurityKey {
+  if (status === "clear" || status === "warn" || status === "risk" || status === "scan_failed") return status;
+  return "pending"; // 数据缺失按 pending 渲染
+}
+
+export function securityPillClass(status: string | null | undefined): string {
+  return `s-${securityKey(status)}`;
+}
+
+export function securityPillText(status: string | null | undefined): string {
+  switch (securityKey(status)) {
+    case "clear":
+      return "已验证";
+    case "warn":
+      return "有注意项";
+    case "risk":
+      return "有风险";
+    case "scan_failed":
+      return "未完成";
+    default:
+      return "检查中";
+  }
+}
+
+/* ============================================================
+   领域 chip 色点（phase2 §4 CMS hue 依赖）
+   ============================================================ */
+
+const HEX_RE = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
+
+let colorWarned = false;
+
+/**
+ * categories.color 适配：hex 字符串直接用；0–360 整数转 hsl。
+ * 缺失 / 非法 → 返回 null，chip 色点不渲染（降级不报错）。
+ */
+export function categoryDotColor(category: Pick<CategoryItem, "slug"> & { color?: unknown }): string | null {
+  const value = (category as { color?: unknown }).color;
+  if (typeof value === "string" && HEX_RE.test(value.trim())) return value.trim();
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 360) {
+    return `hsl(${Math.round(value)}, 70%, 45%)`;
+  }
+  if (value != null && !colorWarned && typeof console !== "undefined") {
+    colorWarned = true;
+    console.warn(`[cnmcp] categories.color 格式无法识别，色点已降级隐藏（slug=${category.slug}）`);
+  }
+  return null;
+}
+
+/* ============================================================
+   评论头像色板：按用户名 hash 从类型色板五色轮换（phase1 §3.7）
+   ============================================================ */
+
+export function avatarColorClass(login: string): string {
+  let hash = 0;
+  for (let i = 0; i < login.length; i += 1) hash = (hash * 31 + login.charCodeAt(i)) >>> 0;
+  return `av-${hash % 5}`;
+}
+
+/* ============================================================
+   通用格式化
+   ============================================================ */
 
 export function formatDateShort(iso: string | null | undefined): string {
   if (!iso) return "—";
   return iso.slice(0, 10);
 }
 
-export function pct(n: number, d: number): string {
-  if (!d) return "—";
-  return `${((n / d) * 100).toFixed(1)}%`;
-}
-
-export function reachLabel(transport: Transport, reachable: boolean | null): { text: string; pill: string } {
-  if (transport === "local") return { text: "本地运行", pill: "p-gray" };
-  if (reachable === true) return { text: "本站探测可达", pill: "p-ok" };
-  if (reachable === false) return { text: "本站探测不可达", pill: "p-bad" };
-  return { text: "未探测", pill: "p-gray" };
-}
-
-export function transportLabel(transport: Transport): string {
-  if (transport === "local") return "本地运行";
-  if (transport === "remote") return "远程服务";
-  return "运行方式未知";
-}
-
-export function compactJson(value: unknown): string {
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-}
-
-export function sparkline(values: Array<number | null>): string {
-  const nums = values.filter((value): value is number => value !== null);
-  if (!nums.length) return "—";
-  const min = Math.min(...nums);
-  const max = Math.max(...nums);
-  const blocks = "▁▂▃▄▅▆▇█";
-  return values
-    .map((value) => {
-      if (value === null) return "·";
-      const idx = max === min ? 4 : Math.min(7, Math.round(((value - min) / (max - min)) * 7));
-      return blocks[idx] ?? "·";
-    })
-    .join("");
-}
-
-export function statusHint(status: ServerStatus, score: number | null): string | null {
-  if (score !== null) return null;
-  if (status === "dead") return "动态验证未通过；页面主分数仅代表公开证据完整度。";
-  if (status === "local_untested") return "本地 stdio 尚未完成动态握手；证据完整度不代表运行安全。";
-  return "动态验证尚未完成；证据完整度仅用于衡量来源与配置信息是否充分。";
+export function formatNumber(n: number): string {
+  return n.toLocaleString("zh-CN");
 }

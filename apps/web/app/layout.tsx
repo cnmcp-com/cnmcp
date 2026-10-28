@@ -10,7 +10,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.cnmcp.com"),
   title: { default: "CNMCP — 中文 AI 开源社区", template: "%s | CNMCP" },
-  description: "发现 AI 相关开源项目。按领域浏览，类型以标签呈现，安全结论写在项目页。",
+  description: "发现 AI 相关开源项目。按领域浏览，类型以徽章呈现，安全结论写在项目页。",
   keywords: ["AI", "开源", "MCP", "skill", "agent", "中文"],
   icons: { icon: "/cnmcp-icon.svg" },
   openGraph: {
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     locale: "zh_CN",
     siteName: "CNMCP",
     title: "CNMCP — 中文 AI 开源社区",
-    description: "按领域发现 skill、agent、MCP、教程和软件。安全结论在项目页。",
+    description: "按领域发现 AI 开源项目。类型以徽章呈现，安全结论在项目页。",
   },
 };
 
@@ -34,14 +34,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className="wrap ft">
           <span>CNMCP · 中文 AI 开源社区</span>
           <span>检查未完成不是风险结论</span>
-          <span style={{ marginLeft: "auto" }}>
+          <span style={{ marginLeft: "auto", display: "flex", gap: 16, flexWrap: "wrap" }}>
             <Link href="/submit">提交项目</Link>
-            {" · "}
             <Link href="/methodology">安全说明</Link>
-            {" · "}
             <Link href="/doctor">本地配置体检</Link>
-            {" · "}
-            <a href="https://github.com/cnmcp-com/cnmcp" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <a href="https://github.com/cnmcp-com/cnmcp" target="_blank" rel="noopener noreferrer">
+              GitHub<span className="sr-only">（在新窗口打开）</span>
+            </a>
           </span>
         </footer>
         <ToastHost />

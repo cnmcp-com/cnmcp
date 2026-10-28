@@ -11,7 +11,9 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const detail = await fetchProject(slug).catch(() => null);
   if (!detail) return { title: "项目" };
   const description = detail.project.summary || detail.project.recommendation || detail.project.repoKey;
-  return { title: detail.project.recommendation || detail.project.title, description };
+  // 下架项目不进索引（phase2 §0.4）
+  const robots = detail.project.status === "taken_down" ? { index: false, follow: false } : undefined;
+  return { title: detail.project.title, description, robots };
 }
 
 export default async function ProjectPage({ params }: { params: Promise<Params> }) {
@@ -27,7 +29,11 @@ export default async function ProjectPage({ params }: { params: Promise<Params> 
 
   return (
     <div className="wrap detail-wrap">
-      {project.status === "taken_down" ? <p className="notice">这个项目已下架，不再出现在信息流和列表里。</p> : null}
+      {project.status === "taken_down" ? (
+        <p className="notice" role="status">
+          这个项目已下架，不再出现在信息流和列表里。
+        </p>
+      ) : null}
       <ProjectDetailView project={project} reviews={reviews} categories={categories} types={types} related={related} />
     </div>
   );

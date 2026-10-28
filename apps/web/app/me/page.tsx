@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "我的", robots: { index: false, fol
 
 export default function MePage() {
   return (
-    <div className="wrap" style={{ padding: "28px 0 48px" }}>
+    <div className="wrap" style={{ padding: "28px 0 48px", maxWidth: 880 }}>
       <MePanel />
     </div>
   );
