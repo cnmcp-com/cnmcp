@@ -20,15 +20,18 @@ export default async function CategoryPage({ params }: { params: Promise<Params>
   const path = `/categories/${encodeURIComponent(category)}`;
 
   const query = new URLSearchParams({ category });
-  const [categories, list] = await Promise.all([
-    fetchCategories(true).catch(() => []),
+  const [categoryResult, list] = await Promise.all([
+    fetchCategories(true)
+      .then((items) => ({ items, ok: true as const }))
+      .catch(() => ({ items: [] as Awaited<ReturnType<typeof fetchCategories>>, ok: false as const })),
     fetchProjects(query.toString()).catch(() => ({ items: [], total: 0, nextCursor: null })),
   ]);
 
-  const currentCategory = categories.find((item) => item.slug === category);
-  if (!currentCategory) notFound();
+  const currentCategory = categoryResult.items.find((item) => item.slug === category);
+  // 目录加载成功但 slug 不存在才是 404。接口失败时仍按 slug 展示，避免把故障当成页面不存在。
+  if (categoryResult.ok && !currentCategory) notFound();
 
-  const visible = categories.filter((item) => item.projectCount > 0 || item.slug === category);
+  const visible = categoryResult.items.filter((item) => item.projectCount > 0 || item.slug === category);
 
   return (
     <div className="wrap discover">
@@ -39,8 +42,8 @@ export default async function CategoryPage({ params }: { params: Promise<Params>
       </nav>
 
       <header className="page-head">
-        <h1>{currentCategory.name}</h1>
-        <p>{currentCategory.description || "这个领域下的项目。"}</p>
+        <h1>{currentCategory?.name ?? category}</h1>
+        <p>{currentCategory?.description || "这个领域下的项目。"}</p>
       </header>
 
       <DiscoveryBar
