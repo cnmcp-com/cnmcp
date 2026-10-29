@@ -7,7 +7,7 @@ export function toast(message: string) {
 }
 
 export function ToastHost() {
-  const [message, setMessage] = useState("已复制");
+  const [message, setMessage] = useState("");
   const [on, setOn] = useState(false);
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export function ToastHost() {
   }, []);
 
   return (
-    <div className={`toast${on ? " on" : ""}`} role="status">
+    <div className={`toast${on ? " on" : ""}`} role="status" aria-hidden={on ? undefined : true}>
       {message}
     </div>
   );

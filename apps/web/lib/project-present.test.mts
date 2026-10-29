@@ -22,15 +22,17 @@ test("static checks stay unlabeled when unfinished", () => {
   assert.equal(JSON.stringify(securityAxis(null)).includes("动态"), false);
 });
 
-test("chinese recommendation leads the title and is not repeated as the summary", () => {
+test("repository fact leads the title; recommendation is surfaced separately", () => {
   const project = {
     title: "confcheck",
     recommendation: "一个轻量级、可嵌入的配置管理与合规检查工具",
     summary: "在持续集成里验证配置。",
   };
-  assert.equal(displayTitle(project), project.recommendation);
+  // 产品基准：推荐语可补在摘要旁，不覆盖仓库事实（_docs/cnmcp-ai-community-redesign.md §数据模型）
+  assert.equal(displayTitle(project), project.title);
+  assert.equal(displayTitle({ title: "confcheck", recommendation: null }), "confcheck");
   assert.equal(headerSummary(project), project.summary);
-  assert.equal(headerSummary({ ...project, summary: project.recommendation }), null);
+  assert.equal(headerSummary({ ...project, summary: project.title }), null);
 });
 
 test("type and topic tags collapse duplicates and drop languages", () => {

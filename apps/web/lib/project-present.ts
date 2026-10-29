@@ -62,15 +62,15 @@ export function severityLabel(severity: ScanEvidence["severity"] | string): stri
   return "信息";
 }
 
+/** 展示标题：一律用项目标题本身；推荐语只作为补充（产品基准：推荐语不覆盖仓库事实）。 */
 export function displayTitle(project: Pick<ProjectCard, "title" | "recommendation">): string {
-  const recommendation = project.recommendation?.trim();
-  return recommendation || project.title;
+  return project.title;
 }
 
 export function headerSummary(project: Pick<ProjectCard, "title" | "summary" | "recommendation">): string | null {
   const summary = project.summary.trim();
   if (!summary) return null;
-  if (summary === displayTitle(project) || summary === project.title) return null;
+  if (summary === project.title) return null;
   return summary;
 }
 

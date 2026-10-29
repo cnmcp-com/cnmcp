@@ -65,23 +65,38 @@ export function IconShare({ className }: IconProps) {
         strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
-        d="M6.2 6.4 10 4.6M6.2 9.6 10 11.4M4.6 9.6a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6ZM11.4 6.2a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6ZM11.4 13.4a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6Z"
+        d="M6.2 6.4 10 4.6M6.2 9.6 10 11.4M4.6 9.6a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0-3.6ZM11.4 6.2a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0-3.6ZM11.4 13.4a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0-3.6Z"
       />
     </svg>
   );
 }
 
-export function IconShield({ className }: IconProps) {
+export function IconSearch({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 16 16" aria-hidden="true">
       <path
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
-        d="M8 1.6 13 3.4v4.2c0 3.1-2.1 5.2-5 6.8-2.9-1.6-5-3.7-5-6.8V3.4L8 1.6Z"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        d="M7 12A5 5 0 1 0 7 2a5 5 0 0 0 0 10ZM10.6 10.6 14 14"
       />
-      <path fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" d="M5.6 8.1 7.2 9.7 10.5 6.4" />
+    </svg>
+  );
+}
+
+export function IconMenu({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M2 4h12M2 8h12M2 12h12" />
+    </svg>
+  );
+}
+
+export function IconClose({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" aria-hidden="true">
+      <path d="m3.5 3.5 9 9m0-9-9 9" />
     </svg>
   );
 }

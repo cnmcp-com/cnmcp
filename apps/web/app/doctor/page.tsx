@@ -18,7 +18,7 @@ export default function DoctorPage() {
         </p>
       </div>
       <div className="priv">
-        <div className="dot d-ok" style={{ marginTop: 5 }} />
+        <div className="dot d-info" style={{ marginTop: 5 }} />
         <div>
           <b>这不是社区入库入口</b>
           <p>收录项目请到提交页粘贴 GitHub 地址。这里不把配置送进检查队列。</p>
