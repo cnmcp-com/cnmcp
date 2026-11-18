@@ -1,18 +1,10 @@
 {
-  "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "cnmcp-web",
+  "name": "cnmcp-web-v2",
   "main": ".open-next/worker.js",
-  "workers_dev": true,
-  "compatibility_date": "2026-09-24",
+  "compatibility_date": "2026-11-18",
   "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
-  "observability": { "enabled": true },
-  "vars": {
-    "API_URL": "https://api.cnmcp.com",
-    "NEXT_PUBLIC_API_URL": "https://api.cnmcp.com",
-    "NEXT_PUBLIC_SITE_URL": "https://www.cnmcp.com"
-  }
+  "workers_dev": true,
+  "assets": {"directory": ".open-next/assets", "binding": "ASSETS"},
+  "services": [{"binding": "COMMUNITY", "service": "cnmcp-server-v2"}],
+  "observability": {"enabled": true}
 }

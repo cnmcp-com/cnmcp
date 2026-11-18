@@ -1,60 +1,51 @@
-# CNMCP 生产发布配置
+# CNMCP 2.0 在 Cloudflare 上发布
 
-CNMCP 使用 GitHub Actions 发布两个 Cloudflare Workers：
+`cnmcp-web-v2` 提供 Next.js 页面及同源 API，通过 `COMMUNITY` Service Binding 调用 `cnmcp-server-v2`。后端独占 `cnmcp-community` D1。新 Worker 使用独立名称，部署后可以先验证预览地址，再为正式域名切流。
 
-- `cnmcp-api`：Hono API、Cron 与 Queue，并绑定 D1 与 R2。
-- `cnmcp-web`：通过 OpenNext 将 Next.js 15 应用发布到 Workers。
+## 1. 后端与种子
 
-推送到 `main` 后，工作流会先测试和构建 API，应用 D1 增量迁移并发布 API；API 健康检查通过后，再构建和发布网站。也可以在 GitHub Actions 页面手动运行 `Deploy`。
+先在目标 Cloudflare 账户验证 Wrangler 登录。进入私有 `cnmcp-server` 仓库：
 
-## Cloudflare 配置
-
-1. 确认域名 `cnmcp.com` 已接入当前 Cloudflare 账户。API 会按 Wrangler 配置创建 `api.cnmcp.com` Custom Domain；网站先发布到 `cnmcp-web` 的 `workers.dev` 地址。当前 `www.cnmcp.com` 仍在提供旧站内容，上线切换时需要先从旧 Pages 项目解绑该域名并删除冲突的 A/CNAME 记录，再到 `cnmcp-web` 的 Settings → Domains & Routes 添加 `www.cnmcp.com` Custom Domain。
-2. 保留已创建的 D1 数据库 `cnmcp`（ID `a648e64c-8857-4efe-90bb-20d4eb715698`）。不要新建同名空库。
-3. 确认 R2 bucket `cnmcp-evidence` 以及以下 Queue 已存在。Wrangler 会部署 Worker，但不会自动创建 Queue 或迁移已有对象数据。
-   - `cnmcp-verify`
-   - `cnmcp-stdio-probe` 与 `cnmcp-stdio-probe-dlq`
-   - `cnmcp-submissions` 与 `cnmcp-submissions-dlq`
-4. 在 `cnmcp-api` Worker 中配置 Secret：
-   - `INTERNAL_API_TOKEN`：至少 32 字节的随机值；所有 `/internal/*` 请求使用 `Authorization: Bearer <token>`。
-   - `GITHUB_TOKEN`：已有的 GitHub API 令牌，入库时读取公开仓库元数据和 README。
-   - `GITHUB_CLIENT_ID` 与 `GITHUB_CLIENT_SECRET`：社区登录用的 GitHub OAuth App。回调地址为 `https://api.cnmcp.com/v1/auth/github/callback`。未配置时登录接口返回 503，只读页面和内部灌入仍可用。不要另建一套令牌名来替代 `GITHUB_TOKEN`。
-5. 创建一个用于 GitHub Actions 的 Cloudflare API Token，并只授权当前账户/zone。至少需要 Workers Scripts、Workers Routes、Containers、D1、Queues、R2 的编辑权限，以及账户和 zone 的读取权限。
-
-首次发布提交队列前执行一次：
-
-```bash
-cd apps/api
-npx wrangler queues create cnmcp-submissions
-npx wrangler queues create cnmcp-submissions-dlq
+```sh
+npm ci
+npm test
+npx wrangler whoami
+npx wrangler d1 create cnmcp-community
+node scripts/configure-d1.mjs <新库的数据库-ID>
+npm run build
+npm run db:remote
+npm run deploy
 ```
 
-API Worker 同时部署 `StdioProbeContainer` 镜像。发布环境需要 Docker，并且 Cloudflare Token 必须允许发布 Containers 及其镜像。部署后先保持 `STDIO_PROBE_ENABLED=false`，按照 [stdio 探测 MVP](./stdio-containers-mvp.md) 完成单项目和分批灰度，再开启定时任务。
+如果数据库已创建，使用它的 ID。配置脚本拒绝旧版两个数据库 ID。生产工作流接受同一个 ID，读取 `CNMCP_COMMUNITY_D1_ID`。
 
-本地设置 Worker Secret：
+迁移完成后核对六个领域、100 条资源和每个首批领域 25 条：
 
-```bash
-cd apps/api
-npx wrangler secret put INTERNAL_API_TOKEN
+```sh
+npx wrangler d1 execute DB --remote --command "SELECT d.id,count(rd.resource_id) AS resources FROM domains d LEFT JOIN resource_domains rd ON rd.domain_id=d.id GROUP BY d.id ORDER BY d.sort_order;"
 ```
 
-## GitHub 配置
+配置后端 Worker 的 `GITHUB_CLIENT_ID` 与 `GITHUB_CLIENT_SECRET`。在 GitHub OAuth App 登记 `https://www.cnmcp.com/auth/github/callback`，并确保后端 `SITE_ORIGIN` 对应这一域名。GitHub 资料任务可以使用可选的 `GITHUB_TOKEN`。
 
-1. 在仓库 `cnmcp-com/cnmcp` 的 Settings → Environments 创建 `production` 环境。
-2. 在 `production` 的 Environment secrets 中添加：
-   - `CLOUDFLARE_ACCOUNT_ID`：`4861c298421ed03b14c02c703bdf1c88`
-   - `CLOUDFLARE_API_TOKEN`：上一步创建的最小权限 Cloudflare Token
-3. 将 `production` 的 deployment branches 限制为 `main`。需要人工确认发布时，可再配置 required reviewers。
-4. Settings → Actions → General 中保持 Actions 可运行，并把默认 `GITHUB_TOKEN` 权限定为 Read repository contents；当前工作流只申请 `contents: read`。
-5. 为 `main` 添加分支保护，要求 `CI / test` 通过后才能合并。
+## 2. 网站与切流
 
-`INTERNAL_API_TOKEN` 应保存在 Cloudflare Worker Secrets，不需要复制到 GitHub Actions。
+进入公开 `cnmcp` 仓库：
 
-## 发布顺序与恢复
+```sh
+npm ci
+npm test
+npm run deploy
+node scripts/smoke-deployment.mjs https://<网站-Worker-预览地址>
+```
 
-1. `CI` 对提交执行测试、类型检查和两个 Worker 的生产构建。
-2. `Deploy / api` 应用未执行的 D1 迁移；D1 会在迁移前自动创建备份，单个失败迁移会回滚。
-3. API 发布并通过 `https://api.cnmcp.com/health` 检查。
-4. 网站先发布到 `workers.dev`；完成 `www.cnmcp.com` 域名切换后，再进行公开地址检查。
+先验证预览可读、健康接口返回 2.0、资源分页显示真实种子。然后在 Cloudflare 中将 `www.cnmcp.com` 绑定至 `cnmcp-web-v2`，根据现有域名配置移除旧 Pages 的冲突绑定。正式域名验证：
 
-若网站发布失败，API 与已经成功的 D1 迁移不会回滚。修复后重新运行 `Deploy` 即可；迁移命令只应用尚未执行的文件。
+```sh
+node scripts/smoke-deployment.mjs https://www.cnmcp.com
+```
+
+在正式域名实际执行 GitHub 登录、发布、工作台和退出。GitHub Actions 可分别手动运行后台和网站的发布工作流。两个仓库使用各自生产环境中的 `CLOUDFLARE_ACCOUNT_ID` 与 `CLOUDFLARE_API_TOKEN`。
+
+## 3. 退役旧部署
+
+确认正式域名已切流且两个旧 D1 均无其他使用方后，退役旧版 `cnmcp-web`、`cnmcp-api` 和 `cnmcp-server`，并移除 `api.cnmcp.com` 与 `cms.cnmcp.com` 的旧路由。确认新版网站与 Worker 都只绑定新 D1 后，删除原版 `cnmcp` 和 `cnmcp-server` D1。这一步会永久清除旧表与数据。最后重新跑正式域名检查。

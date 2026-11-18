@@ -1,26 +1,28 @@
-const [url, expected = "web"] = process.argv.slice(2);
+import assert from 'node:assert/strict';
 
-if (!url) {
-  console.error("用法：node scripts/smoke-deployment.mjs <url> [api|web]");
-  process.exit(1);
+const origin = new URL(process.argv[2] || process.env.CNMCP_SMOKE_ORIGIN);
+assert.equal(origin.protocol, 'https:');
+
+async function get(path) {
+  const response = await fetch(new URL(path, origin), { signal: AbortSignal.timeout(15000) });
+  assert.equal(response.status, 200, path);
+  return response.json();
 }
 
-const attempts = 18;
-for (let attempt = 1; attempt <= attempts; attempt += 1) {
-  try {
-    const response = await fetch(url, { redirect: "follow" });
-    const body = await response.text();
-    const valid = response.ok && (expected !== "api" || /"ok"\s*:\s*true/.test(body));
-    if (valid) {
-      console.log(`发布验证通过：${url} (${response.status})`);
-      process.exit(0);
-    }
-    console.log(`第 ${attempt}/${attempts} 次检查未通过：HTTP ${response.status}`);
-  } catch (error) {
-    console.log(`第 ${attempt}/${attempts} 次检查失败：${String(error)}`);
-  }
-  if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, 10_000));
+const status = await get('/health');
+assert.equal(status.version, '2.0');
+assert.equal(status.domains, 6);
+const taxonomy = await get('/api/v1/taxonomy');
+assert.deepEqual(taxonomy.domains.map(row => row.id), ['video','game','ai','dev','productivity','self-hosting']);
+for (const domain of ['video','game','ai','dev']) {
+  const resources = await get('/api/v1/resources?limit=30&domain=' + domain);
+  assert.ok(resources.items.length >= 25);
+  const detail = await get('/api/v1/resources/' + resources.items[0].id);
+  assert.ok(detail.sources.length);
 }
-
-console.error(`发布后验证超时：${url}`);
-process.exit(1);
+const page = await fetch(new URL('/', origin), { signal: AbortSignal.timeout(15000) });
+assert.equal(page.status, 200);
+assert.match(await page.text(), /最近讨论/);
+const legacy = await fetch(new URL('/admin', origin), { signal: AbortSignal.timeout(15000) });
+assert.equal(legacy.status, 404);
+console.log('CNMCP 2.0 production smoke checks passed at', origin.origin);

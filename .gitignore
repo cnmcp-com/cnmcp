@@ -38,3 +38,6 @@ scripts/*
 !scripts/smoke-deployment.mjs
 !scripts/tencent-plaza/
 !scripts/tencent-plaza/**
+
+# Private backend checkout staging while repository access is being restored.
+/.cnmcp-server-v2/

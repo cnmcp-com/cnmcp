@@ -1,0 +1,13 @@
+{
+  "name": "@cnmcp/contracts",
+  "version": "2.0.0",
+  "type": "module",
+  "exports": {
+    "types": "./index.d.ts",
+    "default": "./index.mjs"
+  },
+  "files": [
+    "index.mjs",
+    "index.d.ts"
+  ]
+}

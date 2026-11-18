@@ -1,35 +1,21 @@
 {
   "name": "@cnmcp/web",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "private": true,
-  "license": "Apache-2.0",
+  "type": "module",
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "next dev --webpack --port 3000",
     "build": "next build --webpack",
     "build:worker": "opennextjs-cloudflare build",
-    "preview:worker": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "start": "next start",
-    "typecheck": "tsc --noEmit --incremental false",
-    "test": "node --experimental-strip-types --test lib/*.test.mts",
-    "lint": "echo skip"
+    "test": "node --test lib/*-v2.test.mjs"
   },
   "dependencies": {
-    "@cnmcp/doctor": "*",
-    "@cnmcp/schema": "*",
+    "@cnmcp/contracts": "2.0.0",
     "@opennextjs/cloudflare": "1.20.6",
     "next": "16.3.6",
     "react": "19.1.9",
     "react-dom": "19.1.9"
   },
-  "devDependencies": {
-    "@types/node": "24.10.1",
-    "@types/react": "19.1.16",
-    "@types/react-dom": "19.1.9",
-    "autoprefixer": "10.4.21",
-    "postcss": "^8.5.23",
-    "tailwindcss": "3.4.19",
-    "typescript": "5.9.3",
-    "wrangler": "4.137.0"
-  }
+  "devDependencies": {"wrangler":"4.137.0"}
 }
