@@ -7,7 +7,8 @@ import { api, readLocal, writeLocal } from '../lib/client.mjs';
 import { CommunityContext, nameOf, Panel, scopePath } from './shared.jsx';
 import { Browse, Guide, loginPath, Search } from './browse.jsx';
 import { Detail } from './detail.jsx';
-import { MemberPage, Notifications, Publish, Settings } from './member.jsx';
+import { MemberPage, Notifications, Publish, PublishResource, Settings } from './member.jsx';
+import { Overview } from './overview.jsx';
 
 const historyKey = 'cnmcp:v2:history';
 const themeKey = 'cnmcp:v2:theme';
@@ -43,9 +44,17 @@ function useRecentVisit(section, data, domain) {
   return [items, () => { writeLocal(historyKey, []); setItems([]); }];
 }
 
-function Sidebar({ member, domain, sidebar, history, clearHistory, login }) {
-  return <aside className="sidebar" aria-label="社区侧栏">
-    <Panel className="welcome-panel">
+function Sidebar({ member, domain, sidebar, history, clearHistory, login, overview }) {
+  const hot = sidebar?.todayHot ?? [];
+  const waiting = sidebar?.waitingCount ?? 0;
+  return <aside className={'sidebar' + (overview ? ' overview-sidebar' : '')} aria-label="社区侧栏">
+    {overview && <Panel className="overview-contribute" title="参与社区">
+      <div className="overview-contribute-links">
+        <a href={scopePath('publish-resource', { domain })}><span><strong>推荐开源项目</strong><small>分享你用过的项目和用途。</small></span><span aria-hidden="true">→</span></a>
+        <a href="/guide"><span><strong>社区指南</strong><small>了解怎样发帖和引用资源。</small></span><span aria-hidden="true">→</span></a>
+      </div>
+    </Panel>}
+    {(!overview || member) && <Panel className="welcome-panel">
       <strong>{member ? member.display_name : 'CNMCP 开源社区'}</strong>
       {member ? <>
         <div className="account-stats">{[['bookmarks','收藏',member.bookmark_count],['followed-topics','关注',member.followed_topic_count],
@@ -55,21 +64,21 @@ function Sidebar({ member, domain, sidebar, history, clearHistory, login }) {
           <a href="/settings">设置</a></div>
       </> : <><p className="welcome-copy">交流制作经验，发现可以动手尝试的开源资源。</p>
         <a className="button" href={login}>使用 GitHub 登录</a><a className="guide-link" href="/guide">社区指南</a></>}
-    </Panel>
-    <Panel title="参与讨论"><div className="side-actions">
-      <a href={scopePath('publish', { domain })}>发布新主题 <span>→</span></a>
-      <a href={scopePath('topics', { domain, unanswered: 1 })}>待回应 <span>{sidebar.waitingCount}</span></a>
-    </div></Panel>
-    <Panel title="今日热议"><div className="side-actions">
-      {sidebar.todayHot.length ? sidebar.todayHot.map(item => <a key={item.id} href={queryPath('/topic/' + item.id, { domain })}>
+    </Panel>}
+    {(!overview || waiting > 0) && <Panel title="参与讨论"><div className="side-actions">
+      {!overview && <a href={scopePath('publish', { domain })}>发布新主题 <span>→</span></a>}
+      <a href={scopePath('topics', { domain, unanswered: 1 })}>待回应 <span>{waiting} 个主题</span></a>
+    </div></Panel>}
+    {(!overview || hot.length > 0) && <Panel title={overview ? '今日有回复' : '今日热议'}><div className="side-actions">
+      {hot.length ? hot.map(item => <a key={item.id} href={queryPath('/topic/' + item.id, { domain })}>
         {item.title}<span>{item.today_reply_count} 条回复</span></a>) : <p className="side-copy">今天还没有收到回复的讨论。</p>}
-    </div></Panel>
-    <Panel title="最近浏览" action={history.length > 0 && <button className="text-button" onClick={clearHistory}>清空</button>}>
+    </div></Panel>}
+    {(!overview || history.length > 0) && <Panel title="最近浏览" action={history.length > 0 && <button className="text-button" onClick={clearHistory}>清空</button>}>
       <div className="side-actions">{history.length ? history.map(item => item.unavailable ?
         <p className="side-copy" key={item.kind + item.id}>一条浏览记录暂时无法读取</p> :
         <a key={item.kind + item.id} href={queryPath('/' + item.kind + '/' + item.id, { domain: item.domain })}>
           {item.title}<span>{item.kind === 'topic' ? '主题' : '资源'}</span></a>) : <p className="side-copy">浏览记录仅保存在本机。</p>}</div>
-    </Panel>
+    </Panel>}
   </aside>;
 }
 
@@ -100,7 +109,7 @@ export default function Community({ section, id, params, taxonomy, data, sidebar
     writeLocal(themeKey, theme);
   }, [theme]);
   function reload() { router.refresh(); refreshMember(); }
-  const columns = [['overview','全部'],['topics','主题'],['resources','资源发现']];
+  const columns = [['overview','首页'],['topics','主题'],['resources','资源发现']];
   const value = { taxonomy, domain, member, ready, memberError, login, theme, setTheme, reload, refreshMember };
 
   return <CommunityContext.Provider value={value}>
@@ -122,16 +131,19 @@ export default function Community({ section, id, params, taxonomy, data, sidebar
     </div></header>
     <main className="site-main two-column">
       <div className="main-column">
-        {columns.some(([key]) => key === section) && <Browse section={section} data={data} params={params}/>}
+        {section === 'overview' && <Overview data={data}/>}
+        {['topics','resources'].includes(section) && <Browse section={section} data={data} params={params}/>}
         {section === 'search' && <Search data={data} params={params}/>}
         {section === 'guide' && <Guide/>}
         {['topic','resource'].includes(section) && <Detail key={id} kind={section} item={data} params={params}/>}
         {section === 'publish' && <Publish key={params.draft || params.edit || 'new'} params={params}/>}
+        {section === 'publish-resource' && <PublishResource/>}
         {section === 'me' && <MemberPage params={params}/>}
         {section === 'notifications' && <Notifications params={params}/>}
         {section === 'settings' && <Settings/>}
       </div>
-      <Sidebar member={member} domain={domain} sidebar={sidebar} history={history} clearHistory={clearHistory} login={login}/>
+      <Sidebar member={member} domain={domain} sidebar={sidebar} history={history} clearHistory={clearHistory} login={login}
+        overview={section === 'overview'}/>
     </main>
     <footer className="site-footer"><div><strong>CNMCP.</strong></div>
       <nav><a href="/guide">社区指南</a><a href="/settings">设置</a></nav>

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { memberTabs, queryPath, reportReasons } from '@cnmcp/contracts';
 import { api } from '../lib/client.mjs';
 import { MemberGate, retrievePending, useAction, useData } from './actions.jsx';
-import { Alert, DateLabel, Editor, Empty, facets, Panel, useCommunity } from './shared.jsx';
+import { Alert, DateLabel, Editor, Empty, facets, Panel, ResourceAvatar, scopePath, useCommunity } from './shared.jsx';
 
 export function Publish({ params }) {
   const { member } = useCommunity();
@@ -105,6 +105,57 @@ function PublishForm({ initial, topic, params }) {
   </Panel>;
 }
 
+const resourcePendingKey = 'publish-resource';
+
+export function PublishResource() {
+  const { taxonomy, domain, member, ready } = useCommunity();
+  const [fields, setFields] = useState({ url: '', name: '', summary: '', domainId: domain });
+  const action = useAction();
+  useEffect(() => {
+    const pending = retrievePending(resourcePendingKey);
+    if (pending) setFields(pending);
+  }, []);
+  function update(event) {
+    const { name, value } = event.target;
+    setFields(current => ({ ...current, [name]: value }));
+  }
+  async function publish(event) {
+    event.preventDefault();
+    const result = await action.perform('/resources', {
+      method: 'POST', body: fields, idempotent: true, pendingKey: resourcePendingKey
+    });
+    if (result) window.location.assign(queryPath('/resource/' + result.id, {
+      domain: result.created ? fields.domainId : undefined
+    }));
+  }
+  return <Panel title="发布资源">
+    <form className="full-form resource-publish-form" onSubmit={publish}>
+      <label className="field">资源链接
+        <input type="url" name="url" value={fields.url} onChange={update} placeholder="https://github.com/owner/repository"
+          required maxLength={1800}/>
+        <small>支持 HTTPS 链接。已收录的链接会打开现有资源。</small>
+      </label>
+      <label className="field">资源名称（选填）
+        <input name="name" value={fields.name} onChange={update} maxLength={150}/>
+      </label>
+      <label className="field">所属领域
+        <select name="domainId" value={fields.domainId} onChange={update} required>
+          <option value="">请选择领域</option>
+          {taxonomy.domains.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select>
+      </label>
+      <label className="field">用途说明（选填）
+        <textarea name="summary" value={fields.summary} onChange={update} rows={4} maxLength={1000}/>
+      </label>
+      <Alert message={action.error}/>
+      <div className="form-actions">
+        <button className="button primary" disabled={!ready || action.busy}>{member ? '发布资源' : '登录后发布'}</button>
+        <a className="button" href={scopePath('resources', { domain })}>返回资源发现</a>
+      </div>
+    </form>
+  </Panel>;
+}
+
 function collectionItem(tab, item) {
   switch (tab) {
     case 'bookmarks': return [item.title, item.topic_id ? '/topic/' + item.topic_id : '/resource/' + item.resource_id];
@@ -140,7 +191,9 @@ export function MemberPage({ params }) {
       {collection.data.items.length ? <div className="member-list">{collection.data.items.map(item => {
         const [label, to] = collectionItem(tab, item);
         return <div className="member-entry" key={item.id || item.topic_id || item.resource_id}>
-          <div><a href={to}>{label}</a><small><DateLabel value={item.updated_at || item.created_at}/></small>
+          <div><a className={tab === 'discoveries' || item.resource_id ? 'resource-title' : undefined} href={to}>
+            {(tab === 'discoveries' || item.resource_id) && <ResourceAvatar item={item} size={24}/>}
+            {label}</a><small><DateLabel value={item.updated_at || item.created_at}/></small>
             {tab === 'replies' && <p>{item.body.slice(0, 120)}</p>}</div>
           {tab === 'drafts' && <div>{confirm === item.id ? <div className="form-actions">
             <button className="button" disabled={action.busy} onClick={() => deleteDraft(item.id)}>确认删除</button>

@@ -60,12 +60,21 @@ export function Signals({ item, full = false }) {
   </div>;
 }
 
+export function ResourceAvatar({ item, size = 36 }) {
+  const [failed, setFailed] = useState(null);
+  const src = item.avatar_url;
+  return <span className="avatar resource-avatar" style={{ width: size, height: size }} aria-hidden="true">
+    {src && src !== failed ? <img src={src} width={size} height={size} alt="" loading="lazy"
+      referrerPolicy="no-referrer" onError={() => setFailed(src)}/> : (resourceKinds[item.kind] || '资源')[0]}
+  </span>;
+}
+
 export function ResourceRow({ item }) {
   const { domain, taxonomy } = useCommunity();
   const tags = [...new Map(item.tags.filter(tag => !domain || domain === tag.domain_id)
     .map(tag => [tag.tag_id, tag])).values()];
   return <article className="feed-row resource-row">
-    <span className="avatar resource-avatar" aria-hidden="true">{(resourceKinds[item.kind] || '资源')[0]}</span>
+    <ResourceAvatar item={item}/>
     <div className="resource-row-content">
       <a className="feed-title" href={queryPath('/resource/' + item.id, { domain })}>{item.name}</a>
       <span className="badge resource row-kind">{resourceKinds[item.kind]}</span>
@@ -192,7 +201,8 @@ export function Editor({ value, onChange, label, rows = 7 }) {
           onChange={e => setPicker({ ...picker, query: e.target.value })}/>}
         <div role="listbox" aria-label="资源候选">{results.map((item, i) =>
           <button type="button" role="option" aria-selected={i === active} key={item.id} onMouseDown={e => e.preventDefault()}
-            onClick={() => insert(item)}><span><strong>{item.name}</strong><small>{item.summary}</small></span></button>)}</div>
+            onClick={() => insert(item)}><ResourceAvatar item={item} size={24}/>
+            <span><strong>{item.name}</strong><small>{item.summary}</small></span></button>)}</div>
         {!results.length && <p className="picker-empty">{status || '可直接粘贴新资源的 HTTPS 链接。'}</p>}
       </div>}
     </div>

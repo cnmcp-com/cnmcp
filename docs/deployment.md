@@ -1,6 +1,6 @@
 # CNMCP 2.0 在 Cloudflare 上发布
 
-`cnmcp-web-v2` 提供 Next.js 页面及同源 API，通过 `COMMUNITY` Service Binding 调用 `cnmcp-server-v2`。后端独占 `cnmcp-community` D1。新 Worker 使用独立名称，部署后可以先验证预览地址，再为正式域名切流。
+生产包含两个 Worker。 `cnmcp-web` 负责 Next.js 页面和同源 API 转发，通过 `COMMUNITY` Service Binding 调用 `cnmcp-server`。只有后端绑定 `cnmcp-community` D1。
 
 ## 1. 后端与种子
 
@@ -38,7 +38,7 @@ npm run deploy
 node scripts/smoke-deployment.mjs https://<网站-Worker-预览地址>
 ```
 
-先验证预览可读、健康接口返回 2.0、资源分页显示真实种子。然后在 Cloudflare 中将 `www.cnmcp.com` 绑定至 `cnmcp-web-v2`，根据现有域名配置移除旧 Pages 的冲突绑定。正式域名验证：
+先验证预览可读、健康接口返回 2.0、资源分页显示真实种子。然后在 Cloudflare 中将 `www.cnmcp.com` 绑定至 `cnmcp-web`，根据现有域名配置移除旧 Pages 的冲突绑定。正式域名验证：
 
 ```sh
 node scripts/smoke-deployment.mjs https://www.cnmcp.com
@@ -48,4 +48,4 @@ node scripts/smoke-deployment.mjs https://www.cnmcp.com
 
 ## 3. 退役旧部署
 
-确认正式域名已切流且两个旧 D1 均无其他使用方后，退役旧版 `cnmcp-web`、`cnmcp-api` 和 `cnmcp-server`，并移除 `api.cnmcp.com` 与 `cms.cnmcp.com` 的旧路由。确认新版网站与 Worker 都只绑定新 D1 后，删除原版 `cnmcp` 和 `cnmcp-server` D1。这一步会永久清除旧表与数据。最后重新跑正式域名检查。
+确认正式域名已切流且两个旧 D1 均无其他使用方后，停用公开旧版 `cnmcp-api`、移除 `api.cnmcp.com` 与 `cms.cnmcp.com` 的旧路由。确认新版网站与 Worker 都只绑定新 D1 后，删除原版 `cnmcp` 和 `cnmcp-server` D1。这一步会永久清除旧表与数据。最后重新跑正式域名检查。

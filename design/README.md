@@ -13,7 +13,12 @@ design/
 ├── ARCHITECTURE.md           cnmcp / cnmcp-server 职责及实施边界
 ├── UI-SPEC.md                页面结构、样式、响应式规则
 ├── database/
-│   └── README.md             表字典、关系、事务与私有后端迁移入口
+│   ├── README.md             表字典、关系、事务与查询说明
+│   ├── schema.sql            新空库DDL：26表、4视图
+│   ├── seed.sql              分类种子，无用户或互动数据
+│   ├── queries.sql           16 个命名查询
+│   ├── writes.sql            关注、取消关注与登录状态的原子 SQL
+│   └── test_schema.py        35 项数据库检查
 ├── prototype/                可运行交互原型、配置与测试
 │   ├── README.md             预览和运行说明
 │   ├── AGENTS.md             最终范围及维护约束
@@ -35,6 +40,7 @@ design/
 从仓库根目录验证：
 
 ```sh
+python3 design/database/test_schema.py
 npm --prefix design/prototype run test:model
 npm --prefix design/prototype run build
 npm --prefix design/prototype run test:sites
@@ -44,4 +50,4 @@ npm --prefix design/prototype run test:sites
 
 ## 深度交互
 
-cnmcp负责网站、交互和公开契约；cnmcp-server负责唯一业务后端、数据库、鉴权、任务及后续MCP。本目录保留关系说明。私有后端仓库维护迁移、分类种子和数据库测试。原型使用演示数据。
+cnmcp负责网站、交互和公开契约；cnmcp-server负责唯一业务后端、数据库、鉴权、任务及后续MCP。数据库设计目前在本目录审阅，后端实施时一次性移交唯一迁移链，不维护两套生效SQL。原型仍为本地演示，文档整理不代表生产服务或远端数据库已切换。

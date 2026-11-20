@@ -4,6 +4,7 @@
   "version": "2.0.0",
   "workspaces": ["apps/web", "packages/contracts"],
   "scripts": {
+    "start": "npm run dev",
     "dev": "npm run dev -w @cnmcp/web",
     "build": "npm run build -w @cnmcp/web",
     "build:worker": "npm run build:worker -w @cnmcp/web",

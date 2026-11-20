@@ -10,14 +10,13 @@
 
 | 文件 | 内容 |
 | --- | --- |
-| `migrations/community/0001_schema.sql` | 26 张业务和基础表、4 个可见性读取视图及约束索引 |
-| `migrations/community/0002_taxonomy.sql` | 六个首发领域及适用节点、标签 |
-| `migrations/community/0003_hellogithub.sql` | 100 条首发资源及来源 |
-| `src/queries.sql` | 命名查询，覆盖列表、概览、个人数据和通知接收者 |
-| `src/writes.sql` | 关注、取消关注和 OAuth state 消费的原子 SQL |
-| `tests/test_schema.py` | 在内存 SQLite 中验证行为和约束 |
+| [schema.sql](schema.sql) | 26 张业务/基础表、4 个可见性读取视图及约束索引 |
+| [seed.sql](seed.sql) | 2 领域、9 平级节点、13 适用关系、9 资源标签、14 标签适用关系；无虚构用户/资源/帖子/互动 |
+| [queries.sql](queries.sql) | 16 个命名查询，覆盖列表、概览、个人数据和回复通知接收者 |
+| [writes.sql](writes.sql) | 关注、取消关注和 OAuth state 消费的原子 SQL |
+| [test_schema.py](test_schema.py) | 干净内存 SQLite 中的行为和约束测试，无线上写入 |
 
-在私有后端仓库运行 `python3 tests/test_schema.py` 验证。ID 使用应用生成的 UUID/ULID，时间统一 UTC Unix 秒；原型毫秒值不能直接写库。生产站点日界线为 Asia/Shanghai，查询仍绑定 UTC 秒。
+验证：`python3 design/database/test_schema.py`。ID 使用应用生成的 UUID/ULID，时间统一 UTC Unix 秒；原型毫秒值不能直接写库。生产站点日界线为 Asia/Shanghai，查询仍绑定 UTC 秒。
 
 D1 作为现有 Cloudflare 部署下的轻量关系库选择，外键保持启用；多语句写入通过参数化 batch 完成，异常回滚。[D1 外键](https://developers.cloudflare.com/d1/sql-api/foreign-keys/)、[batch 说明](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch)。本地 SQLite 验证不等于已通过远端 D1 集成测试。
 
@@ -61,7 +60,7 @@ D1 作为现有 Cloudflare 部署下的轻量关系库选择，外键保持启�
 | metadata_jobs | source_id、state、attempts、run_after、lease_until、last_error | `source_id` 同时是主键与外键，每来源一个可恢复任务 |
 | idempotency_keys | user_id、scope、request_key、request_hash、response_status、response_json、expires_at | 用户+操作+键唯一；成功结果与业务写入原子持久化，不存会话令牌 |
 
-完整字段、默认值、长度及外键以私有后端的 `0001_schema.sql` 为准。没有登录态的“游客”不建 users 行。GitHub 授权只做身份识别，后端交换后不因登录需要长期保留 GitHub access token。
+完整字段、默认值、长度及外键以 schema.sql 为准。没有登录态的“游客”不建 users 行。GitHub 授权只做身份识别，后端交换后不因登录需要长期保留 GitHub access token。
 
 ### 4. 核心关系
 

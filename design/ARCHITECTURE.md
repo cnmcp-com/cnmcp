@@ -88,7 +88,7 @@ cnmcp-server/
 
 现有 apps/api 的业务实现应在实施阶段被新后端替代并退出部署。网站薄BFF直接位于 apps/web 的同源路由中，不保留一个能独立写库的第二后端。旧 registry/doctor/probe 及可信检查模块不纳入这版社区MVP。
 
-迁移由私有仓库的 `migrations/community` 管理。公共仓库在 `design/database` 保留关系说明及迁移入口。
+数据库设计文件本轮仍以 cnmcp/design/database 为唯一审阅源。后端实施第一步将其一次性移交 cnmcp-server/migrations/community，随后公共仓库只保留关系说明/契约及链接，不维护手工双份SQL。本轮没有伪造已经完成的代码迁移。
 
 ### 6. API 契约草案
 

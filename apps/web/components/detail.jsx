@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { queryPath, reportReasons, resourceKinds } from '@cnmcp/contracts';
 import { retrievePending, useAction, useData } from './actions.jsx';
-import { Alert, DateLabel, Editor, Empty, Markdown, nameOf, Panel, ResourceRow, scopePath, Signals, TopicRow, useCommunity } from './shared.jsx';
+import { Alert, DateLabel, Editor, Empty, Markdown, nameOf, Panel, ResourceAvatar, ResourceRow, scopePath, Signals, TopicRow, useCommunity } from './shared.jsx';
 
 function Report({ kind, id, close, pendingKey, initial }) {
   const dialog = useRef(null);
@@ -123,7 +123,7 @@ export function Detail({ kind, item, params }) {
       <div className="breadcrumb"><a href={scopePath(topic ? 'topics' : 'resources', { domain })}>{topic ? '主题' : '资源发现'}</a>
         {domains.map(id => <a key={id} href={scopePath(topic ? 'topics' : 'resources', { domain: id })}>{nameOf(taxonomy.domains, id)}</a>)}
         {topic && <a href={scopePath('topics', { domain: item.domain_id, node: item.node_id })}>{nameOf(taxonomy.nodes, item.node_id)}</a>}</div>
-      <h1>{item.title || item.name}</h1>
+      {topic ? <h1>{item.title}</h1> : <h1 className="resource-title"><ResourceAvatar item={item} size={48}/>{item.name}</h1>}
       <div className="topic-meta">{topic ? <strong>{item.author}</strong> : <span className="badge resource">{resourceKinds[item.kind]}</span>}
         <DateLabel value={item.created_at}/></div>
     </div><div className="topic-content">

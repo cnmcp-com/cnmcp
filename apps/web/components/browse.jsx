@@ -5,39 +5,30 @@ import { Empty, facets, Panel, ResourceRow, scopePath, TopicRow, useCommunity } 
 
 export function Browse({ section, data, params }) {
   const { taxonomy, domain } = useCommunity();
-  const resources = section === 'resources', overview = section === 'overview';
+  const resources = section === 'resources';
   const facetKey = resources ? 'tag' : 'node';
   const selected = params[facetKey] || 'all';
-  const available = overview ? [] : facets(taxonomy, domain, resources ? 'tags' : 'nodes');
+  const available = facets(taxonomy, domain, resources ? 'tags' : 'nodes');
   const domains = [{ id: 'all', name: '全部' }, ...taxonomy.domains];
-  const base = resources ? { kind: params.kind, sort: params.sort } :
-    overview ? {} : { sort: params.sort, unanswered: params.unanswered };
+  const base = resources ? { kind: params.kind, sort: params.sort } : { sort: params.sort, unanswered: params.unanswered };
   const next = resources ? data.nextPage : data.nextCursor;
   const filters = { domain, ...base, [facetKey]: selected };
-  return <Panel className={'browse-panel browse-' + section}>
+  return <Panel className={'browse-panel browse-' + section} title={resources ? '资源发现' : undefined}
+    action={resources && <a className="button primary" href={scopePath('publish-resource', { domain })}>发布资源</a>}>
     <div className="browse-navigation">
       <nav className="domain-links" aria-label="领域">{domains.map(item => {
         const id = item.id === 'all' ? '' : item.id;
-        const allowed = !overview && facets(taxonomy, id, resources ? 'tags' : 'nodes').some(x => x.id === selected);
+        const allowed = facets(taxonomy, id, resources ? 'tags' : 'nodes').some(x => x.id === selected);
         return <a key={item.id} href={scopePath(section, { ...base, domain: id, [facetKey]: allowed ? selected : undefined })}
           aria-current={(!domain && !id) || domain === id ? 'page' : undefined}>{item.name}</a>;
       })}</nav>
-      {!overview && <nav className="topic-node-links" aria-label={resources ? '资源标签' : '主题节点'}>
+      <nav className="topic-node-links" aria-label={resources ? '资源标签' : '主题节点'}>
         {[{ id: 'all', name: resources ? '不限标签' : '全部节点' }, ...available].map(item =>
           <a key={item.id} href={scopePath(section, { ...base, domain, [facetKey]: item.id })}
             aria-current={item.id === selected ? 'page' : undefined}>{item.name}</a>)}
-      </nav>}
+      </nav>
     </div>
     <div className="browse-body">
-      {overview ? <>
-        <div className="panel-title"><h2>最近讨论</h2><a href={scopePath('topics', { domain })}>更多主题 →</a></div>
-        {data.recentTopics.length ? data.recentTopics.map(item => <TopicRow key={item.id} item={item}/>) :
-          <Empty title="还没有讨论" text="可以提出问题或分享实践经验。">
-            <a className="button" href={scopePath('publish', { domain })}>发起讨论</a></Empty>}
-        <div className="panel-title section-divider"><h2>资源发现</h2><a href={scopePath('resources', { domain })}>更多资源 →</a></div>
-        {data.recentResources.length ? data.recentResources.map(item => <ResourceRow key={item.id} item={item}/>) :
-          <Empty title="这个领域还没有资源" text="在主题或回复中分享链接，社区会为它建立资源档案。"/>}
-      </> : <>
         <form className={resources ? 'resource-controls filters' : 'list-controls filters'} action={resources ? '/resources' : '/topics'}>
           {domain && <input type="hidden" name="domain" value={domain}/>}
           {selected !== 'all' && <input type="hidden" name={facetKey} value={selected}/>}
@@ -60,7 +51,6 @@ export function Browse({ section, data, params }) {
           {params.cursor && <a className="button" href={scopePath(section, filters)}>回到第一页</a>}
           {next && <a className="button" href={scopePath(section, { ...filters, [resources ? 'page' : 'cursor']: next })}>下一页</a>}
         </nav>}
-      </>}
     </div>
   </Panel>;
 }
@@ -91,7 +81,7 @@ export function Guide() {
       <h2>选择领域与节点</h2><p>每个主题选择一个领域和一个适用节点。同一个节点可以在多个领域使用。</p>
       <dl>{taxonomy.domains.map(domain => <div key={domain.id}><dt><strong>{domain.name}</strong> · {domain.description}</dt>
         <dd>{facets(taxonomy, domain.id, 'nodes').map(node => node.name).join('、')}</dd></div>)}</dl>
-      <h2>引用与资源收录</h2><p>输入 @ 选择站点资源，或粘贴新的 HTTPS 链接。一个资源可以出现在多个领域，引用与评论会保留在同一个档案里。</p>
+      <h2>发布与引用资源</h2><p>在资源发现中可以直接发布 HTTPS 链接。编辑主题、回复或评论时，也可以粘贴新链接，或输入 @ 引用站点已有资源。</p>
       <h2>反馈</h2><p>资料有误、链接失效或内容违规时，可从页面提交反馈并查看自己的回执。</p>
     </div>
   </Panel>;
