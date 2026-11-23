@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 
 const origin = new URL(process.argv[2] || process.env.CNMCP_SMOKE_ORIGIN);
 assert.equal(origin.protocol, 'https:');
@@ -22,7 +23,14 @@ for (const domain of ['video','game','ai','dev']) {
 }
 const page = await fetch(new URL('/', origin), { signal: AbortSignal.timeout(15000) });
 assert.equal(page.status, 200);
-assert.match(await page.text(), /最近讨论/);
+const homepage = await page.text();
+assert.match(homepage, /最近讨论/);
+assert.match(homepage, /class="brand"/);
+assert.match(homepage, /\/cnmcp-icon\.svg\?v=2/);
+const logo = await fetch(new URL('/cnmcp-icon.svg?v=2', origin), { signal: AbortSignal.timeout(15000) });
+assert.equal(logo.status, 200);
+assert.match(logo.headers.get('content-type') ?? '', /^image\/svg\+xml\b/);
+assert.equal(await logo.text(), await readFile(new URL('../apps/web/public/cnmcp-icon.svg', import.meta.url), 'utf8'));
 const legacy = await fetch(new URL('/admin', origin), { signal: AbortSignal.timeout(15000) });
 assert.equal(legacy.status, 404);
 console.log('CNMCP 2.0 production smoke checks passed at', origin.origin);

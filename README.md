@@ -5,7 +5,7 @@
 - [产品设计与交互原型](design/README.md)
 - [Cloudflare 发布](docs/deployment.md)
 
-本仓库包含 Next.js 网站、同源 BFF 与公开接口契约。私有 `cnmcp-server` Worker 管理 GitHub 登录、社区数据、资源资料同步和通知。
+本仓库包含 Next.js 网站、同源 BFF 与公开接口契约。由私有 `cnmcp-server` 仓库发布的 `cnmcp-server-v2` Worker 管理 GitHub 登录、社区数据、资源资料同步和通知。
 
 ## 本地开发与检查
 

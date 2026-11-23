@@ -1,6 +1,6 @@
 # CNMCP 2.0 在 Cloudflare 上发布
 
-生产包含两个 Worker。 `cnmcp-web` 负责 Next.js 页面和同源 API 转发，通过 `COMMUNITY` Service Binding 调用 `cnmcp-server`。只有后端绑定 `cnmcp-community` D1。
+生产包含两个 Worker。 `cnmcp-web` 负责 Next.js 页面和同源 API 转发，通过 `COMMUNITY` Service Binding 调用 `cnmcp-server-v2`。只有后端绑定 `cnmcp-community` D1。
 
 ## 1. 后端与种子
 
