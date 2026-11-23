@@ -114,7 +114,10 @@ export default function Community({ section, id, params, taxonomy, data, sidebar
 
   return <CommunityContext.Provider value={value}>
     <header className="site-header"><div className="header-inner">
-      <a className="brand" href={scopePath('overview', { domain })}>CNMCP<span>.</span></a>
+      <a className="brand" href={scopePath('overview', { domain })}>
+        <img src="/cnmcp-icon.svg?v=2" width="30" height="30" alt="" />
+        CNMCP
+      </a>
       <nav className="site-columns" aria-label="站点栏目">{columns.map(([key, label]) =>
         <a key={key} href={scopePath(key, { domain })} aria-current={section === key ? 'page' : undefined}>{label}</a>)}</nav>
       <form className="search-box compact" action="/search" role="search">
