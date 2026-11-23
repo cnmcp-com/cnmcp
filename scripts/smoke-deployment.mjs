@@ -24,9 +24,10 @@ for (const domain of ['video','game','ai','dev']) {
 const page = await fetch(new URL('/', origin), { signal: AbortSignal.timeout(15000) });
 assert.equal(page.status, 200);
 const homepage = await page.text();
-assert.match(homepage, /最近讨论/);
-assert.match(homepage, /class="brand"/);
-assert.match(homepage, /\/cnmcp-icon\.svg\?v=2/);
+assert.ok(homepage.includes('id="overview-title"'), 'Community overview is missing');
+assert.ok(/最近讨论|发起讨论/.test(homepage), 'Discussion section is missing');
+assert.ok(homepage.includes('class="brand"'), 'Site brand is missing');
+assert.ok(homepage.includes('/cnmcp-icon.svg?v=2'), 'Site Logo is missing');
 const logo = await fetch(new URL('/cnmcp-icon.svg?v=2', origin), { signal: AbortSignal.timeout(15000) });
 assert.equal(logo.status, 200);
 assert.match(logo.headers.get('content-type') ?? '', /^image\/svg\+xml\b/);
