@@ -1,33 +1,48 @@
-name: Verify CNMCP preview and production
+name: Check CNMCP GitHub OAuth configuration
 on:
   push:
     branches: [release/cloudflare-community-web]
 permissions:
   contents: read
 jobs:
-  verify:
+  oauth:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 6
+    environment: production
+    env:
+      GITHUB_CLIENT_ID: ${{ secrets.CNMCP_GITHUB_CLIENT_ID || secrets.GITHUB_CLIENT_ID }}
+      GITHUB_CLIENT_SECRET: ${{ secrets.CNMCP_GITHUB_CLIENT_SECRET || secrets.GITHUB_CLIENT_SECRET }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version: "22"
-      - name: Verify the frontend preview
-        run: node scripts/smoke-deployment.mjs https://community-fdc44b4-cnmcp-web.burgleaf.workers.dev
-      - name: Verify the production cutover
+      - name: Check whether the OAuth pair is configured
+        id: credentials
         run: |
-          for attempt in $(seq 1 36); do
-            if node scripts/smoke-deployment.mjs https://www.cnmcp.com; then exit 0; fi
-            sleep 10
-          done
-          exit 1
-      - name: Check GitHub login availability
+          if [ -n "$GITHUB_CLIENT_ID" ] && [ -n "$GITHUB_CLIENT_SECRET" ]; then
+            echo 'OAuth pair available: yes'
+            echo 'available=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'OAuth pair available: no'
+            echo 'available=false' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Configure the existing OAuth pair on the community Worker
+        if: steps.credentials.outputs.available == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           node --input-type=module <<'JS'
-          const url = 'https://www.cnmcp.com/auth/github/start';
-          const response = await fetch(url, {redirect:'manual', signal:AbortSignal.timeout(15000)});
-          const location = response.headers.get('location');
-          const github = !!location && new URL(location).hostname === 'github.com';
-          console.log('GitHub OAuth start: HTTP ' + response.status + '; redirects to GitHub: ' + github);
+          const { CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET } = process.env;
+          const path = 'https://api.cloudflare.com/client/v4/accounts/' + CLOUDFLARE_ACCOUNT_ID + '/workers/scripts/cnmcp-server-v2/secrets';
+          const headers = { Authorization: 'Bearer ' + CLOUDFLARE_API_TOKEN, 'Content-Type': 'application/json' };
+          const before = await fetch(path,{headers,signal:AbortSignal.timeout(15000)});
+          if (!before.ok) throw Error('Cloudflare secret check returned HTTP ' + before.status);
+          const names = new Set((await before.json()).result.map(v=>v.name));
+          for (const [name,text] of Object.entries({GITHUB_CLIENT_ID,GITHUB_CLIENT_SECRET})) {
+            if (names.has(name)) continue;
+            const result = await fetch(path,{method:'PUT',headers,body:JSON.stringify({name,text,type:'secret_text'}),signal:AbortSignal.timeout(15000)});
+            if (!result.ok || !(await result.json()).success) throw Error('Cloudflare failed to configure ' + name + ': HTTP ' + result.status);
+          }
+          const login = await fetch('https://www.cnmcp.com/auth/github/start',{redirect:'manual',signal:AbortSignal.timeout(15000)});
+          const location = login.headers.get('location');
+          if (login.status!==302 || !location || new URL(location).hostname!=='github.com') throw Error('OAuth start returned HTTP '+login.status);
+          console.log('GitHub OAuth start redirects to GitHub');
           JS
