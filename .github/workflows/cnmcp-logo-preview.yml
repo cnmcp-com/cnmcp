@@ -1,27 +1,30 @@
-name: Upload CNMCP logo preview
+name: Verify the CNMCP logo preview
 on:
   push:
     branches: [release/logo-preview-dba9a36]
 permissions:
   contents: read
 jobs:
-  version:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    environment: production
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version: "22"
-          cache: npm
-      - name: Check deployment credentials
-        run: test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
-      - run: npm ci
-      - run: npm run build:worker
-      - name: Upload version for preview
-        working-directory: apps/web
-        run: npx --no-install wrangler versions upload --config wrangler.jsonc --preview-alias logo-dba9a36
+      - name: Verify the published SVG and inspect the homepage
+        run: |
+          curl -fsS --max-time 20 --retry 2 --retry-all-errors 'https://logo-dba9a36-cnmcp-web.burgleaf.workers.dev/cnmcp-icon.svg?v=2' -o /tmp/cnmcp-logo.svg
+          cmp /tmp/cnmcp-logo.svg apps/web/public/cnmcp-icon.svg
+          echo 'Preview alias SVG matches the committed logo'
+          curl -fsS --max-time 20 'https://d0372b6a-cnmcp-web.burgleaf.workers.dev/cnmcp-icon.svg?v=2' -o /tmp/cnmcp-logo-version.svg
+          cmp /tmp/cnmcp-logo-version.svg apps/web/public/cnmcp-icon.svg
+          echo 'Version URL SVG matches the committed logo'
+          curl -fsS --max-time 20 'https://logo-dba9a36-cnmcp-web.burgleaf.workers.dev/' -o /tmp/cnmcp-home.html
+          if grep -q 'class="brand"' /tmp/cnmcp-home.html && grep -q '/cnmcp-icon.svg?v=2' /tmp/cnmcp-home.html; then
+            echo 'Homepage renders the new brand and icon'
+          else
+            echo 'Homepage did not render the new brand'
+            if grep -q '社区暂时无法加载' /tmp/cnmcp-home.html; then
+              echo 'Homepage reported the community backend is unavailable'
+            fi
+            exit 1
+          fi
