@@ -1,0 +1,57 @@
+name: Upload and verify CNMCP community frontend
+on:
+  push:
+    branches: [release/cloudflare-community-web]
+permissions:
+  contents: read
+concurrency:
+  group: cnmcp-web-production
+  cancel-in-progress: false
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CNMCP_SMOKE_ORIGIN: https://community-fdc44b4-cnmcp-web.burgleaf.workers.dev
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:worker
+      - name: Wait for the community backend to deploy
+        run: |
+          node --input-type=module <<'JS'
+          const { CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN } = process.env;
+          const endpoint = 'https://api.cloudflare.com/client/v4/accounts/' + CLOUDFLARE_ACCOUNT_ID + '/workers/scripts/cnmcp-server-v2/deployments';
+          for (let attempt = 0; attempt < 19; attempt++) {
+            const response = await fetch(endpoint, { headers: { Authorization: 'Bearer ' + CLOUDFLARE_API_TOKEN }, signal: AbortSignal.timeout(10000) });
+            if (response.ok) {
+              const payload = await response.json();
+              if (payload.result?.deployments?.length) {
+                console.log('cnmcp-server-v2 has an active deployment');
+                process.exit(0);
+              }
+            } else if (response.status !== 404) {
+              throw Error('Backend check returned HTTP ' + response.status);
+            }
+            if (attempt < 18) await new Promise(resolve => setTimeout(resolve,10000));
+          }
+          throw Error('cnmcp-server-v2 has no deployment');
+          JS
+      - name: Upload the frontend version for verification
+        working-directory: apps/web
+        run: npx --no-install wrangler versions upload --config wrangler.jsonc --preview-alias community-fdc44b4
+      - name: Verify the homepage, Logo, and public APIs on the preview
+        run: |
+          for attempt in 1 2 3 4; do
+            if node scripts/smoke-deployment.mjs "$CNMCP_SMOKE_ORIGIN"; then exit 0; fi
+            if [ "$attempt" != 4 ]; then sleep 8; fi
+          done
+          exit 1
