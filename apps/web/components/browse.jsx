@@ -86,5 +86,3 @@ export function Guide() {
     </div>
   </Panel>;
 }
-
-export const loginPath = path => queryPath('/auth/github/start', { return: path });

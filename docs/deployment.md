@@ -25,7 +25,15 @@ npm run deploy
 npx wrangler d1 execute DB --remote --command "SELECT d.id,count(rd.resource_id) AS resources FROM domains d LEFT JOIN resource_domains rd ON rd.domain_id=d.id GROUP BY d.id ORDER BY d.sort_order;"
 ```
 
-配置后端 Worker 的 `GITHUB_CLIENT_ID` 与 `GITHUB_CLIENT_SECRET`。在 GitHub OAuth App 登记 `https://www.cnmcp.com/auth/github/callback`，并确保后端 `SITE_ORIGIN` 对应这一域名。GitHub 资料任务可以使用可选的 `GITHUB_TOKEN`。
+### 配置 GitHub 登录
+
+1. 打开 [GitHub OAuth Apps](https://github.com/settings/developers)，选择 **New OAuth App**。
+2. 设置 **Application name** 为 `CNMCP`，**Homepage URL** 为 `https://www.cnmcp.com`。在 **Redirect URIs** 下的 **Redirect URI** 输入框填入 `https://www.cnmcp.com/auth/github/callback`，保持 **Allow wildcard matching** 未勾选，然后点击 **Register application**。
+3. 注册后复制 **Client ID**，选择 **Generate a new client secret** 并保存生成的值。
+4. 在 [Cloudflare 控制台](https://dash.cloudflare.com/)打开 **Workers & Pages → cnmcp-server-v2 → Settings → Variables and Secrets → Add**，以 **Secret** 类型分别添加 `GITHUB_CLIENT_ID` 和 `GITHUB_CLIENT_SECRET`，然后选择 **Deploy**。后端 `SITE_ORIGIN` 使用 `https://www.cnmcp.com`。
+5. 打开 [CNMCP 登录入口](https://www.cnmcp.com/auth/github/start)，确认跳转到 GitHub。授权后返回 CNMCP，打开工作台确认会话有效。
+
+GitHub 资料同步使用可选的 `GITHUB_TOKEN`，OAuth 登录使用上面两项凭据。
 
 ## 2. 网站与切流
 

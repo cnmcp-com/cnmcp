@@ -155,6 +155,10 @@
 .pagination { justify-content:flex-end }
 .link-tabs [aria-current=page] { background:var(--blue-soft); color:var(--blue) }
 .empty-state .button { margin-top:10px }
+.login-panel { max-width:440px; margin:40px auto; padding:24px }
+.login-panel h1 { font-size:22px; margin:0 }
+.login-message { margin:12px 0 0; color:var(--danger) }
+.login-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:18px }
 .guide-content dl>div { padding:8px 0; border-bottom:1px solid var(--line) }
 .guide-content dd { margin:3px 0 0; color:var(--muted) }
 .prose pre { white-space:pre-wrap; overflow-wrap:anywhere; padding:10px; background:var(--soft); border-radius:4px }
