@@ -22,21 +22,56 @@ function context(segment = [], values = {}) {
 
 const getDetail = cache((section, id, page) => load(queryPath('/v1/' + section + 's/' + id, { page })));
 
-async function loadOverview(domain) {
-  const data = await load(queryPath('/v1/overview', { domain }));
-  if (!domain || data.recentResources.length) return data;
+async function resourcesFor(params) {
+  return (await load(queryPath('/v1/resources', params)).catch(() => null))?.items ?? [];
+}
 
-  const fallback = await load('/v1/overview').catch(() => null);
-  return { ...data, otherResources: fallback?.recentResources ?? [] };
+async function loadOverview(domain) {
+  const [data, latest, active, starred] = await Promise.all([
+    load(queryPath('/v1/overview', { domain })),
+    resourcesFor({ domain, sort: 'new', limit: 16 }),
+    resourcesFor({ domain, sort: 'activity', limit: 4 }),
+    resourcesFor({ domain, sort: 'stars', limit: 4 })
+  ]);
+  const engaged = active.filter(item =>
+    item.discussion_reference_count || item.comment_count || item.bookmark_count || item.helpful_count);
+  const highStars = starred.filter(item => item.stars > 0);
+  const ranking = engaged.length ? 'activity' : highStars.length ? 'stars' : 'guide';
+  const rankedResources = engaged.length ? engaged : highStars;
+  const featuredResources = ranking === 'guide'
+    ? await resourcesFor({ domain, guide: '1', sort: 'new', limit: 4 }) : rankedResources;
+  const ignored = new Set(featuredResources.map(item => item.id));
+  const recentResources = (latest.length ? latest : data.recentResources)
+    .filter(item => !ignored.has(item.id)).slice(0, 8);
+  const otherResources = domain && !latest.length && !data.recentResources.length
+    ? await resourcesFor({ sort: 'new', limit: 8 }) : [];
+  return { ...data, recentResources, otherResources, featuredResources, ranking };
+}
+
+async function loadResourcePage(id, page, preferredDomain) {
+  const resource = await getDetail('resource', id, page);
+  const domain = resource.domain_ids.includes(preferredDomain) ? preferredDomain : resource.domain_ids[0];
+  const tag = resource.tags.find(item => item.domain_id === domain)?.tag_id;
+  if (!domain) return resource;
+
+  const related = tag ? await resourcesFor({ domain, tag, sort: 'activity', limit: 5 }) : [];
+  const candidates = related.filter(item => item.id !== id);
+  if (candidates.length < 4) {
+    const known = new Set([id, ...candidates.map(item => item.id)]);
+    const more = await resourcesFor({ domain, sort: 'activity', limit: 5 });
+    candidates.push(...more.filter(item => !known.has(item.id)));
+  }
+  return { ...resource, relatedResources: candidates.slice(0, 4), relatedDomain: domain };
 }
 
 function pageData(section, id, query) {
-  const { domain, node, tag, sort, unanswered, cursor, page, kind, q } = query;
-  if (detail.has(section)) return getDetail(section, id, page);
+  const { domain, node, tag, sort, unanswered, cursor, page, kind, q, guide } = query;
+  if (section === 'resource') return loadResourcePage(id, page, domain);
+  if (section === 'topic') return getDetail(section, id, page);
   switch (section) {
     case 'overview': return loadOverview(domain);
     case 'topics': return load(queryPath('/v1/topics', { domain, node, sort, unanswered, cursor }));
-    case 'resources': return load(queryPath('/v1/resources', { domain, tag, sort, page, kind }));
+    case 'resources': return load(queryPath('/v1/resources', { domain, tag, sort, page, kind, guide }));
     case 'search': return load(queryPath('/v1/search', { domain, query: q, kind }));
     default: return null;
   }

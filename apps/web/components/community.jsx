@@ -9,7 +9,7 @@ import { CommunityContext, Markdown, nameOf, Panel, scopePath } from './shared.j
 import { Browse, Guide, Search } from './browse.jsx';
 import { Detail } from './detail.jsx';
 import { MemberPage, Notifications, Publish, PublishResource, Settings } from './member.jsx';
-import { Overview } from './overview.jsx';
+import { Overview, OverviewHeader } from './overview.jsx';
 
 const historyKey = 'cnmcp:v2:history';
 const themeKey = 'cnmcp:v2:theme';
@@ -134,7 +134,8 @@ export default function Community({ section, id, params, taxonomy, data, sidebar
         <a href={scopePath('publish', { domain })} className="button primary">＋ 发布</a>
       </div>
     </div></header>
-    <main className="site-main two-column">
+    <main className={'site-main two-column' + (section === 'overview' ? ' discovery-home' : '')}>
+      {section === 'overview' && <OverviewHeader/>}
       <div className="main-column">
         {section === 'overview' && <>
           {sitePages.filter(page => page.slug === 'notice' || page.slug === 'home').map(page =>

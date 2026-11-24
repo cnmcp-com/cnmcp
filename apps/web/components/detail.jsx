@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { queryPath, reportReasons, resourceKinds } from '@cnmcp/contracts';
 import { retrievePending, useAction, useData } from './actions.jsx';
-import { Alert, DateLabel, Editor, Empty, ManagedAuthor, Markdown, nameOf, Panel, ResourceAvatar, ResourceRow, scopePath, Signals, TopicRow, useCommunity } from './shared.jsx';
+import { Alert, DateLabel, Editor, Empty, ManagedAuthor, Markdown, nameOf, Panel, ResourceAvatar, ResourceRow, scopePath, TopicRow, useCommunity } from './shared.jsx';
 
 function Report({ kind, id, close, pendingKey, initial }) {
   const dialog = useRef(null);
@@ -99,6 +99,62 @@ function Discussion({ kind, item, params, privateState, onRefresh, report }) {
   </Panel>;
 }
 
+const sourceLabels = { github: '查看 GitHub 仓库', huggingface: '访问 Hugging Face', web: '访问项目网站', community: '打开社区链接' };
+
+function ResourceOverview({ item, domain, taxonomy, actions }) {
+  const [primary, ...otherSources] = item.sources;
+  const github = item.sources.find(source => source.provider === 'github');
+  const facts = [
+    ['GitHub Stars', item.stars?.toLocaleString('zh-CN')],
+    ['主要语言', github?.metadata?.language],
+    ['代码许可', item.code_license],
+    ['权重许可', item.weights_license],
+    ['维护状态', github?.metadata?.archived ? '仓库已归档' : null],
+    ['站内收藏', item.bookmark_count || null],
+    ['有帮助', item.helpful_count || null]
+  ].filter(([, value]) => value);
+  const filterDomain = item.domain_ids.includes(domain) ? domain : '';
+  const categories = item.tags.filter(tag => !filterDomain || tag.domain_id === filterDomain);
+  const tags = [...new Map(categories.map(tag => [tag.tag_id, tag])).values()];
+  const summary = item.summary || github?.metadata?.description;
+
+  return <>
+    <section className="panel resource-profile" aria-labelledby="resource-name">
+      <nav className="breadcrumb" aria-label="资源路径">
+        <a href={scopePath('resources', { domain })}>资源发现</a>
+        {item.domain_ids.map(id => <a key={id} href={scopePath('resources', { domain: id })}>{nameOf(taxonomy.domains, id)}</a>)}
+      </nav>
+      <div className="resource-profile-heading">
+        <ResourceAvatar item={item} size={58}/>
+        <div><span className="resource-profile-kind">{resourceKinds[item.kind]}</span><h1 id="resource-name">{item.name}</h1></div>
+      </div>
+      {typeof summary === 'string' && summary && <p className="resource-profile-summary">{summary}</p>}
+      {tags.length > 0 && <nav className="resource-profile-tags" aria-label="按资源标签浏览">{tags.map(tag =>
+        <a className="tag" key={tag.tag_id} href={scopePath('resources', { domain: filterDomain, tag: tag.tag_id })}>{tag.name}</a>)}</nav>}
+      <div className="resource-profile-actions">
+        {primary && <a className="button primary" href={primary.canonical_url} rel="noreferrer" target="_blank">
+          {sourceLabels[primary.provider] || '访问项目'} <span aria-hidden="true">↗</span></a>}
+        {actions}
+      </div>
+      {facts.length > 0 && <dl className="resource-profile-facts">{facts.map(([label, value]) =>
+        <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>}
+      <div className="resource-profile-credit">
+        {item.author && <span>{item.author} 收录</span>}<ManagedAuthor item={item}/>
+        <DateLabel value={item.created_at}/>
+        {item.stars_observed_at != null && <small>Star 快照 <DateLabel value={item.stars_observed_at}/></small>}
+      </div>
+    </section>
+    {item.overview_markdown?.trim() && <Panel title="项目导读" className="resource-guide">
+      <div className="padded"><Markdown text={item.overview_markdown}/></div>
+    </Panel>}
+    {otherSources.length > 0 && <Panel title="更多项目入口" className="resource-guide">
+      <ul className="resource-profile-sources">{otherSources.map(source => <li key={source.canonical_url}>
+        <a href={source.canonical_url} rel="noreferrer" target="_blank">{source.canonical_url} ↗</a>
+      </li>)}</ul>
+    </Panel>}
+  </>;
+}
+
 export function Detail({ kind, item, params }) {
   const topic = kind === 'topic';
   const { taxonomy, domain, member, reload } = useCommunity();
@@ -112,52 +168,38 @@ export function Detail({ kind, item, params }) {
   }, [reportKey]);
   const discussions = useData(!topic && tab === 'discussions' ? '/resources/' + item.id + '/discussions' : null);
   const bookmark = !!state.data?.bookmarked, following = !!state.data?.followed;
-  const domains = topic ? [item.domain_id] : item.domain_ids;
   async function update(path, isOn, body) {
     if (await action.perform(path, { method: isOn ? 'DELETE' : 'PUT', body })) {
       state.refresh(); reload();
     }
   }
+  const actions = <>
+    <div className="context-actions">
+      <button disabled={action.busy} aria-pressed={bookmark} onClick={() => update('/me/bookmarks', bookmark, { kind, id: item.id })}>
+        {bookmark ? '取消收藏' : '收藏'}</button>
+      {topic && <button disabled={action.busy} aria-pressed={following}
+        onClick={() => update('/me/followed-topics/' + item.id, following)}>{following ? '取消关注' : '关注回复'}</button>}
+      <button onClick={async () => { try { await navigator.clipboard.writeText(location.href); setShare('链接已复制。'); }
+        catch { setShare(location.href); } }}>分享链接</button>
+      <button onClick={() => setReport({ kind, id: item.id })}>{topic ? '反馈' : '资料纠错'}</button>
+      {topic && member?.id === item.author_id && <a href={queryPath('/publish', { edit: item.id, domain })}>编辑主题或补充进展</a>}
+    </div>
+    <Alert message={action.error || state.error}/>{share && <p role="status">{share}</p>}
+  </>;
   return <>
-    <Panel><div className="topic-header">
-      <div className="breadcrumb"><a href={scopePath(topic ? 'topics' : 'resources', { domain })}>{topic ? '主题' : '资源发现'}</a>
-        {domains.map(id => <a key={id} href={scopePath(topic ? 'topics' : 'resources', { domain: id })}>{nameOf(taxonomy.domains, id)}</a>)}
-        {topic && <a href={scopePath('topics', { domain: item.domain_id, node: item.node_id })}>{nameOf(taxonomy.nodes, item.node_id)}</a>}</div>
-      {topic ? <h1>{item.title}</h1> : <h1 className="resource-title"><ResourceAvatar item={item} size={48}/>{item.name}</h1>}
-      <div className="topic-meta">{topic ? <strong>{item.author}</strong> : <span className="badge resource">{resourceKinds[item.kind]}</span>}
-        {!topic && item.managed_author && <strong>{item.author}</strong>}
-        <ManagedAuthor item={item}/><DateLabel value={item.created_at}/></div>
-    </div><div className="topic-content">
-      {topic ? <>
-        <Markdown text={item.body}/>
-        {item.progress_note && <div className="result-block"><strong>作者后续反馈</strong><Markdown text={item.progress_note}/></div>}
-      </> : <>
-        <p>{item.summary || '暂无资源用途说明。'}</p>
-        <Signals item={item} full/>
-        <div className="source-list">
-          {item.stars_observed_at != null && <small>GitHub Star 快照 · <DateLabel value={item.stars_observed_at}/></small>}
-          <small>代码许可 {item.code_license || '待确认'}{item.kind === 'model' && ' · 权重许可 ' + (item.weights_license || '待确认')}</small>
-          {item.sources.map(source => <div key={source.canonical_url}>
-            <a href={source.canonical_url} rel="noreferrer" target="_blank">{source.canonical_url} ↗</a>
-            {source.metadata.language && <small> · {source.metadata.language}</small>}
-            {source.metadata.archived && <small> · 仓库已归档</small>}
-            {source.metadata.curatedUrl && <div><a href={source.metadata.curatedUrl} rel="noreferrer" target="_blank">
-              HelloGitHub 第 {source.metadata.curatedIssue} 期 ↗</a></div>}
-          </div>)}
-        </div>
-      </>}
-      <div className="context-actions">
-        <button disabled={action.busy} aria-pressed={bookmark} onClick={() => update('/me/bookmarks', bookmark, { kind, id: item.id })}>
-          {bookmark ? '取消收藏' : '收藏'}</button>
-        {topic && <button disabled={action.busy} aria-pressed={following}
-          onClick={() => update('/me/followed-topics/' + item.id, following)}>{following ? '取消关注' : '关注回复'}</button>}
-        <button onClick={async () => { try { await navigator.clipboard.writeText(location.href); setShare('链接已复制。'); }
-          catch { setShare(location.href); } }}>分享链接</button>
-        <button onClick={() => setReport({ kind, id: item.id })}>{topic ? '反馈' : '资料纠错'}</button>
-        {topic && member?.id === item.author_id && <a href={queryPath('/publish', { edit: item.id, domain })}>编辑主题或补充进展</a>}
+    {topic ? <Panel><div className="topic-header">
+      <div className="breadcrumb">
+        <a href={scopePath('topics', { domain })}>主题</a>
+        <a href={scopePath('topics', { domain: item.domain_id })}>{nameOf(taxonomy.domains, item.domain_id)}</a>
+        <a href={scopePath('topics', { domain: item.domain_id, node: item.node_id })}>{nameOf(taxonomy.nodes, item.node_id)}</a>
       </div>
-      <Alert message={action.error || state.error}/>{share && <p role="status">{share}</p>}
-    </div></Panel>
+      <h1>{item.title}</h1>
+      <div className="topic-meta"><strong>{item.author}</strong><ManagedAuthor item={item}/><DateLabel value={item.created_at}/></div>
+    </div><div className="topic-content">
+      <Markdown text={item.body}/>
+      {item.progress_note && <div className="result-block"><strong>作者后续反馈</strong><Markdown text={item.progress_note}/></div>}
+      {actions}
+    </div></Panel> : <ResourceOverview item={item} domain={domain} taxonomy={taxonomy} actions={actions}/>}
     {topic && item.resources.length > 0 && <Panel title="提及的资源">{item.resources.map(resource => <ResourceRow key={resource.id} item={resource}/>)}</Panel>}
     {!topic && <Panel><div className="feed-tabs">
       <button aria-pressed={tab === 'comments'} onClick={() => setTab('comments')}>资源评论 · {item.comment_count}</button>
@@ -168,6 +210,10 @@ export function Detail({ kind, item, params }) {
       <Alert message={discussions.error}/>
       {discussions.data ? discussions.data.items.length ? discussions.data.items.map(entry => <TopicRow key={entry.id} item={entry}/>) :
         <Empty title="暂无引用主题"/> : !discussions.error && <Empty title="正在读取引用主题"/>}
+    </Panel>}
+    {!topic && !!item.relatedResources?.length && <Panel title="同类资源" className="resource-guide"
+      action={<a className="small-link" href={scopePath('resources', { domain: item.relatedDomain })}>浏览领域 →</a>}>
+      {item.relatedResources.map(resource => <ResourceRow key={resource.id} item={resource}/>)}
     </Panel>}
     {report && <Report kind={report.kind} id={report.id} initial={report} pendingKey={reportKey} close={() => setReport(null)}/>}
   </>;
