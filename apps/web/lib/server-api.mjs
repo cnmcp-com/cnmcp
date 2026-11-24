@@ -2,16 +2,17 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { browserResponse, targetPath, upstreamHeaders } from './gateway.mjs';
 
 export async function backend(path, init = {}) {
+  const options = { ...init, redirect: 'manual' };
   const url = process.env.CNMCP_LOCAL_API_URL ??
     (process.env.NODE_ENV === 'development' ? 'http://127.0.0.1:8787' : undefined);
   if (url) {
     const origin = new URL(url);
     if (['localhost','127.0.0.1','[::1]'].includes(origin.hostname)) {
-      return fetch(new URL(path, origin), { ...init, cache: 'no-store', redirect: 'manual' });
+      return fetch(new URL(path, origin), { ...options, cache: 'no-store' });
     }
   }
   const { env } = await getCloudflareContext({ async: true }).catch(() => ({}));
-  if (env?.COMMUNITY) return env.COMMUNITY.fetch(new Request('https://community.internal' + path, init));
+  if (env?.COMMUNITY) return env.COMMUNITY.fetch(new Request('https://community.internal' + path, options));
   throw new Error('Community service binding unavailable');
 }
 
