@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { queryPath } from '@cnmcp/contracts';
 import { api, readLocal, writeLocal } from '../lib/client.mjs';
 import { loginPath } from '../lib/login.mjs';
-import { CommunityContext, nameOf, Panel, scopePath } from './shared.jsx';
+import { CommunityContext, Markdown, nameOf, Panel, scopePath } from './shared.jsx';
 import { Browse, Guide, Search } from './browse.jsx';
 import { Detail } from './detail.jsx';
 import { MemberPage, Notifications, Publish, PublishResource, Settings } from './member.jsx';
@@ -83,7 +83,7 @@ function Sidebar({ member, domain, sidebar, history, clearHistory, login, overvi
   </aside>;
 }
 
-export default function Community({ section, id, params, taxonomy, data, sidebar }) {
+export default function Community({ section, id, params, taxonomy, data, sidebar, sitePages = [] }) {
   const router = useRouter();
   const [member, setMember] = useState(null), [ready, setReady] = useState(false), [memberError, setMemberError] = useState('');
   const [theme, setTheme] = useState('light');
@@ -110,6 +110,7 @@ export default function Community({ section, id, params, taxonomy, data, sidebar
     writeLocal(themeKey, theme);
   }, [theme]);
   function reload() { router.refresh(); refreshMember(); }
+  const guide = sitePages.find(page => page.slug === 'guide');
   const columns = [['overview','首页'],['topics','主题'],['resources','资源发现']];
   const value = { taxonomy, domain, member, ready, memberError, login, theme, setTheme, reload, refreshMember };
 
@@ -135,10 +136,14 @@ export default function Community({ section, id, params, taxonomy, data, sidebar
     </div></header>
     <main className="site-main two-column">
       <div className="main-column">
-        {section === 'overview' && <Overview data={data}/>}
+        {section === 'overview' && <>
+          {sitePages.filter(page => page.slug === 'notice' || page.slug === 'home').map(page =>
+            <Panel key={page.slug} title={page.title}><div className="padded"><Markdown text={page.body}/></div></Panel>)}
+          <Overview data={data}/>
+        </>}
         {['topics','resources'].includes(section) && <Browse section={section} data={data} params={params}/>}
         {section === 'search' && <Search data={data} params={params}/>}
-        {section === 'guide' && <Guide/>}
+        {section === 'guide' && (guide ? <Panel title={guide.title}><div className="guide-content"><Markdown text={guide.body}/></div></Panel> : <Guide/>)}
         {['topic','resource'].includes(section) && <Detail key={id} kind={section} item={data} params={params}/>}
         {section === 'publish' && <Publish key={params.draft || params.edit || 'new'} params={params}/>}
         {section === 'publish-resource' && <PublishResource/>}

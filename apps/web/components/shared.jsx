@@ -36,6 +36,10 @@ export function Empty({ title = '暂无内容', text, children }) {
 
 export function Alert({ message }) { return message ? <p className="field-error" role="alert">{message}</p> : null; }
 
+export function ManagedAuthor({ item }) {
+  return item.managed_author ? <span className="badge">社区运营</span> : null;
+}
+
 export function TopicRow({ item }) {
   const { taxonomy, domain } = useCommunity(), url = queryPath('/topic/' + item.id, { domain });
   return <article className="feed-row">
@@ -44,7 +48,7 @@ export function TopicRow({ item }) {
       <div className="row-meta">
         <a href={scopePath('topics', { domain: item.domain_id })}>{nameOf(taxonomy.domains, item.domain_id)}</a>
         <a href={scopePath('topics', { domain: item.domain_id, node: item.node_id })}>{nameOf(taxonomy.nodes, item.node_id)}</a>
-        <span>{item.author}</span><DateLabel value={item.created_at}/>
+        <span>{item.author}</span><ManagedAuthor item={item}/><DateLabel value={item.created_at}/>
         {!!item.resource_count && <span>{item.resource_count} 个资源引用</span>}
       </div>
     </div>
@@ -77,7 +81,7 @@ export function ResourceRow({ item }) {
     <ResourceAvatar item={item}/>
     <div className="resource-row-content">
       <a className="feed-title" href={queryPath('/resource/' + item.id, { domain })}>{item.name}</a>
-      <span className="badge resource row-kind">{resourceKinds[item.kind]}</span>
+      <span className="badge resource row-kind">{resourceKinds[item.kind]}</span><ManagedAuthor item={item}/>
       {item.summary && <p className="resource-row-summary">{item.summary}</p>}
       <div className="resource-domain-links">{item.domain_ids.map(id => <a key={id} href={scopePath('resources', { domain: id })}>
         {nameOf(taxonomy.domains, id)}</a>)}{!item.domain_ids.length && <span className="muted">领域待整理</span>}</div>

@@ -59,10 +59,11 @@ export default async function Page({ params, searchParams }) {
   if (section === 'overview' && Object.keys(query).some(name => name !== 'domain')) redirect(queryPath('/', { domain: query.domain }));
   try {
     const sidebarData = load(queryPath('/v1/sidebar', { domain: query.domain }));
-    const [taxonomy, data, sidebar] = await Promise.all([
-      load('/v1/taxonomy'), pageData(section, id, query), section === 'overview' ? sidebarData.catch(() => null) : sidebarData
+    const siteData = ['overview','guide'].includes(section) ? load('/v1/site-pages').catch(() => null) : null;
+    const [taxonomy, data, sidebar, pages] = await Promise.all([
+      load('/v1/taxonomy'), pageData(section, id, query), section === 'overview' ? sidebarData.catch(() => null) : sidebarData, siteData
     ]);
-    return <Community section={section} id={id} params={query} taxonomy={taxonomy} data={data} sidebar={sidebar}/>;
+    return <Community section={section} id={id} params={query} taxonomy={taxonomy} data={data} sidebar={sidebar} sitePages={pages?.pages}/>;
   } catch (error) {
     if (error.status === 404) notFound();
     return <main className="site-main"><section className="panel padded">

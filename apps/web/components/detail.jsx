@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { queryPath, reportReasons, resourceKinds } from '@cnmcp/contracts';
 import { retrievePending, useAction, useData } from './actions.jsx';
-import { Alert, DateLabel, Editor, Empty, Markdown, nameOf, Panel, ResourceAvatar, ResourceRow, scopePath, Signals, TopicRow, useCommunity } from './shared.jsx';
+import { Alert, DateLabel, Editor, Empty, ManagedAuthor, Markdown, nameOf, Panel, ResourceAvatar, ResourceRow, scopePath, Signals, TopicRow, useCommunity } from './shared.jsx';
 
 function Report({ kind, id, close, pendingKey, initial }) {
   const dialog = useRef(null);
@@ -73,7 +73,7 @@ function Discussion({ kind, item, params, privateState, onRefresh, report }) {
       const quoted = entry.quote_reply_id || entry.quote_comment_id;
       const voteActive = !!privateState?.voted?.includes(entry.id);
       return <article className="discussion-row" id={entry.id} key={entry.id}>
-        <div className="topic-meta"><strong>{entry.author}</strong><DateLabel value={entry.created_at}/></div>
+        <div className="topic-meta"><strong>{entry.author}</strong><ManagedAuthor item={entry}/><DateLabel value={entry.created_at}/></div>
         {quoted && <a className="quote-link" href={'#' + quoted}>引用{noun}</a>}
         <Markdown text={entry.body}/>
         {entry.referenced_topic_id && <a className="quote-link" href={'/topic/' + entry.referenced_topic_id}>查看相关主题</a>}
@@ -125,7 +125,8 @@ export function Detail({ kind, item, params }) {
         {topic && <a href={scopePath('topics', { domain: item.domain_id, node: item.node_id })}>{nameOf(taxonomy.nodes, item.node_id)}</a>}</div>
       {topic ? <h1>{item.title}</h1> : <h1 className="resource-title"><ResourceAvatar item={item} size={48}/>{item.name}</h1>}
       <div className="topic-meta">{topic ? <strong>{item.author}</strong> : <span className="badge resource">{resourceKinds[item.kind]}</span>}
-        <DateLabel value={item.created_at}/></div>
+        {!topic && item.managed_author && <strong>{item.author}</strong>}
+        <ManagedAuthor item={item}/><DateLabel value={item.created_at}/></div>
     </div><div className="topic-content">
       {topic ? <>
         <Markdown text={item.body}/>
