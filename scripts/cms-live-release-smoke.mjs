@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+const cms='https://admin.cnmcp.com', site='https://www.cnmcp.com', mcp='https://mcp.cnmcp.com/mcp';
+const fetchOptions={redirect:'manual',signal:AbortSignal.timeout(20000)};
+const home=await fetch(cms+'/login',fetchOptions);
+assert.equal(home.status,200,'CMS login page');
+assert.ok((await home.text()).includes('CNMCP 管理后台'));
+const auth=await fetch(cms+'/auth/login',{...fetchOptions,method:'POST',headers:{origin:cms},
+  body:new URLSearchParams({username:'cnmcp-release-probe',password:'invalid-release-probe'})});
+assert.equal(auth.status,401,'Cloudflare CMS password verification');
+assert.equal((await fetch(cms+'/api/cms/users',fetchOptions)).status,401,'Unauthenticated CMS API');
+const body=JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/list',params:{}});
+const endpoint={...fetchOptions,method:'POST',headers:{'content-type':'application/json','authorization':'Bearer invalid-release-probe'},body};
+const required=await fetch(mcp,endpoint);
+assert.equal(required.status,401,'MCP rejects unknown credentials');
+assert.equal(required.headers.get('www-authenticate'),'Bearer');
+assert.equal((await fetch(mcp,{...endpoint,headers:{...endpoint.headers,origin:'https://example.invalid'}})).status,403,'MCP rejects disallowed origins');
+const pages=await fetch(site+'/api/v1/site-pages',fetchOptions);
+assert.equal(pages.status,200,'Published page API exposed on the website');
+assert.ok(Array.isArray((await pages.json()).pages));
+const oauth=await fetch(site+'/auth/github/start',fetchOptions);
+assert.equal(oauth.status,302,'Existing GitHub OAuth still redirects');
+assert.equal(new URL(oauth.headers.get('location')).hostname,'github.com');
+console.log('CMS login page, password verification, private routes, MCP authentication and origin checks, published pages and GitHub OAuth verified');
