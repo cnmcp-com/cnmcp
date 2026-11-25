@@ -37,14 +37,19 @@ assert.equal(await logo.text(), await readFile(new URL('../apps/web/public/cnmcp
 const hero = await fetch(new URL('/open-source-studio.jpg', origin), { signal: AbortSignal.timeout(15000) });
 assert.equal(hero.status, 200);
 assert.match(hero.headers.get('content-type') ?? '', /^image\/jpeg\b/);
-const guided = await get('/api/v1/resources?domain=video&guide=1');
-assert.ok(guided.items.length > 0, 'No resources with a guide');
-const guide = await get('/api/v1/resources/' + guided.items[0].id);
+assert.ok(homepage.includes('id="star-leaderboard-title"'), 'GitHub Star ranking is missing');
+const found = await get('/api/v1/search?domain=video&kind=resource&query=OpenMontage');
+const montage = found.resources.find(item => item.name === 'OpenMontage');
+assert.ok(montage, 'OpenMontage resource is missing');
+const guide = await get('/api/v1/resources/' + montage.id);
+assert.ok(Array.isArray(guide.star_history), 'GitHub Star history response is missing');
 assert.ok(guide.overview_markdown?.trim(), 'Resource guide content is missing');
 const resourcePage = await fetch(new URL('/resource/' + guide.id + '?domain=video', origin),
   { signal: AbortSignal.timeout(15000) });
 assert.equal(resourcePage.status, 200);
-assert.ok((await resourcePage.text()).includes('项目导读'), 'Resource guide is missing from the detail page');
+const resourceHtml = await resourcePage.text();
+assert.ok(resourceHtml.includes('项目导读'), 'Resource guide is missing from the detail page');
+assert.ok(resourceHtml.includes('累计 Star'), 'GitHub Star total is missing from the detail page');
 const legacy = await fetch(new URL('/admin', origin), { signal: AbortSignal.timeout(15000) });
 assert.equal(legacy.status, 404);
 console.log('CNMCP 2.0 production smoke checks passed at', origin.origin);

@@ -10,7 +10,7 @@ export function Browse({ section, data, params }) {
   const selected = params[facetKey] || 'all';
   const available = facets(taxonomy, domain, resources ? 'tags' : 'nodes');
   const domains = [{ id: 'all', name: '全部' }, ...taxonomy.domains];
-  const base = resources ? { kind: params.kind, sort: params.sort, guide: params.guide } : { sort: params.sort, unanswered: params.unanswered };
+  const base = resources ? { kind: params.kind, sort: params.sort } : { sort: params.sort, unanswered: params.unanswered };
   const next = resources ? data.nextPage : data.nextCursor;
   const filters = { domain, ...base, [facetKey]: selected };
   return <Panel className={'browse-panel browse-' + section} title={resources ? '资源发现' : undefined}
@@ -37,8 +37,6 @@ export function Browse({ section, data, params }) {
               <option key={id} value={id}>{name}</option>)}</select></label> :
             <label className="inline-check"><input type="checkbox" name="unanswered" value="1"
               defaultChecked={['1','true'].includes(params.unanswered)}/>只看待回应</label>}
-          {resources && <label className="inline-check"><input type="checkbox" name="guide" value="1"
-            defaultChecked={params.guide === '1'}/>有项目导读</label>}
           <label>排序 <select name="sort" defaultValue={params.sort || (resources ? 'activity' : 'new')}>
             {resources ? <><option value="activity">社区互动</option><option value="stars">GitHub Star</option>
               <option value="new">最新发现</option></> : <><option value="new">最新</option><option value="active">活跃</option></>}

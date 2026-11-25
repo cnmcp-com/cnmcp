@@ -31,21 +31,18 @@ async function loadOverview(domain) {
     load(queryPath('/v1/overview', { domain })),
     resourcesFor({ domain, sort: 'new', limit: 16 }),
     resourcesFor({ domain, sort: 'activity', limit: 4 }),
-    resourcesFor({ domain, sort: 'stars', limit: 4 })
+    resourcesFor({ domain, sort: 'stars', limit: 5 })
   ]);
-  const engaged = active.filter(item =>
-    item.discussion_reference_count || item.comment_count || item.bookmark_count || item.helpful_count);
-  const highStars = starred.filter(item => item.stars > 0);
-  const ranking = engaged.length ? 'activity' : highStars.length ? 'stars' : 'guide';
-  const rankedResources = engaged.length ? engaged : highStars;
-  const featuredResources = ranking === 'guide'
-    ? await resourcesFor({ domain, guide: '1', sort: 'new', limit: 4 }) : rankedResources;
-  const ignored = new Set(featuredResources.map(item => item.id));
+  const starRanking = starred.filter(item => item.stars > 0);
+  const rankedIds = new Set(starRanking.map(item => item.id));
+  const featuredResources = active.filter(item => !rankedIds.has(item.id) &&
+    (item.discussion_reference_count || item.comment_count || item.bookmark_count || item.helpful_count));
+  const ignored = new Set([...rankedIds, ...featuredResources.map(item => item.id)]);
   const recentResources = (latest.length ? latest : data.recentResources)
     .filter(item => !ignored.has(item.id)).slice(0, 8);
   const otherResources = domain && !latest.length && !data.recentResources.length
     ? await resourcesFor({ sort: 'new', limit: 8 }) : [];
-  return { ...data, recentResources, otherResources, featuredResources, ranking };
+  return { ...data, recentResources, otherResources, featuredResources, starRanking };
 }
 
 async function loadResourcePage(id, page, preferredDomain) {
@@ -65,13 +62,13 @@ async function loadResourcePage(id, page, preferredDomain) {
 }
 
 function pageData(section, id, query) {
-  const { domain, node, tag, sort, unanswered, cursor, page, kind, q, guide } = query;
+  const { domain, node, tag, sort, unanswered, cursor, page, kind, q } = query;
   if (section === 'resource') return loadResourcePage(id, page, domain);
   if (section === 'topic') return getDetail(section, id, page);
   switch (section) {
     case 'overview': return loadOverview(domain);
     case 'topics': return load(queryPath('/v1/topics', { domain, node, sort, unanswered, cursor }));
-    case 'resources': return load(queryPath('/v1/resources', { domain, tag, sort, page, kind, guide }));
+    case 'resources': return load(queryPath('/v1/resources', { domain, tag, sort, page, kind }));
     case 'search': return load(queryPath('/v1/search', { domain, query: q, kind }));
     default: return null;
   }
@@ -83,7 +80,7 @@ export async function generateMetadata({ params, searchParams }) {
     robots: ['me','notifications','publish','publish-resource','settings','search'].includes(section) ? { index: false } : undefined };
   try {
     const data = await getDetail(section, id, query.page);
-    return { title: data.title || data.name, description: (data.summary || data.body || '').slice(0, 160),
+    return { title: data.title || data.name, description: (data.github_readme?.introduction || data.summary || data.body || '').slice(0, 160),
       alternates: { canonical: '/' + section + '/' + id } };
   } catch { return { title: names[section] }; }
 }

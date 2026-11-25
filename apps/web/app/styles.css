@@ -331,3 +331,47 @@ body:has(.discovery-home) { background:var(--soft) }
 @media (min-width:571px) {
   .discovery-projects:has(.lead-project) > .discovery-project:last-child:nth-child(even) { grid-column:1/-1 }
 }
+
+.star-leaderboard {
+  margin:0; border-radius:12px;
+  background:linear-gradient(140deg,var(--amber-soft),var(--paper) 65%);
+}
+.star-leaderboard-header { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:15px 18px 11px }
+.star-leaderboard-header h2 { font-size:18px; font-weight:700 }
+.star-leaderboard-header a { font-size:12px; flex-shrink:0 }
+.star-leaderboard ol { padding:0 16px 10px 36px; margin:0 }
+.star-leaderboard li { padding-left:3px }
+.star-leaderboard li::marker { color:var(--amber); font-variant-numeric:tabular-nums; font-weight:650 }
+.star-leaderboard li + li { border-top:1px solid var(--line) }
+.star-leaderboard li > a { display:flex; align-items:center; gap:9px; padding:8px 0; color:var(--ink); min-height:44px }
+.star-leaderboard-name { flex:1; min-width:0; font-weight:550; overflow-wrap:anywhere }
+.star-leaderboard strong { color:var(--amber); white-space:nowrap; font-size:12px; font-variant-numeric:tabular-nums }
+.star-leaderboard > p { padding:0 18px 15px; color:var(--muted); font-size:13px }
+.star-insights-body { padding:15px 18px }
+.star-summary { display:flex; flex-wrap:wrap; align-items:start; gap:12px 27px }
+.star-summary > div { display:grid; gap:2px }
+.star-summary span,.star-checked,.star-empty { color:var(--muted); font-size:12px }
+.star-summary strong { font-size:25px; line-height:1.25; font-variant-numeric:tabular-nums }
+.star-gain { color:var(--green) }
+.star-loss { color:var(--danger) }
+.star-checked { margin-top:8px }
+.star-empty { margin-top:14px }
+.star-plot { margin:13px 0 0 }
+.star-plot-area { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:start; gap:8px }
+.star-axis-values { display:flex; flex-direction:column; justify-content:space-between; align-self:stretch; padding:4px 0 25px }
+.star-axis-values,.star-axis-dates { color:var(--muted); font-size:11px; font-variant-numeric:tabular-nums }
+.star-axis-dates { display:flex; justify-content:space-between; gap:5px; padding:0 4px }
+.star-line { display:block; width:100%; min-height:75px; max-height:175px; overflow:visible }
+.star-grid { stroke:var(--line); stroke-dasharray:4 5; fill:none }
+.star-stroke { stroke:var(--green); stroke-width:2; stroke-linejoin:round; fill:none }
+.star-dot { fill:var(--green); stroke:var(--paper); stroke-width:1 }
+.star-observations { margin-top:13px }
+.star-observations summary { cursor:pointer; color:var(--blue); font-size:12px }
+.star-observations table { border-collapse:collapse; width:100%; margin-top:8px; font-size:12px }
+.star-observations :is(th,td) { border-bottom:1px solid var(--line); padding:5px 6px; text-align:left }
+.star-observations :is(th,td):last-child { text-align:right }
+.readme-profile h3 { font-size:14px; margin-bottom:4px }
+.readme-profile > div + div { margin-top:13px }
+.readme-profile p,.readme-profile ul { color:var(--muted); overflow-wrap:anywhere }
+.readme-profile ul { margin:4px 0 0; padding-left:20px }
+.readme-profile li + li { margin-top:4px }

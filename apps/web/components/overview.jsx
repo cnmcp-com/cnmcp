@@ -3,12 +3,6 @@
 import { queryPath, resourceKinds } from '@cnmcp/contracts';
 import { facets, nameOf, ResourceAvatar, scopePath, TopicRow, useCommunity } from './shared.jsx';
 
-const resourceShelves = {
-  activity: { title: '社区热门项目', action: '查看排行', params: { sort: 'activity' } },
-  stars: { title: 'GitHub 高星项目', action: '查看排行', params: { sort: 'stars' } },
-  guide: { title: '有项目导读', action: '全部导读', params: { sort: 'new', guide: '1' } }
-};
-
 const discussionIdeas = [
   { label: '求一个方案', node: 'solution-requests', description: '描述遇到的问题，听听社区怎么做。' },
   { label: '分享一次实践', node: 'solution-sharing', description: '把跑通的方法写下来，让更多人用得上。' }
@@ -49,7 +43,6 @@ function ResourceCard({ item, domain, lead, ranking }) {
       <div className="project-meta">{[resourceKinds[item.kind], labels[0] || category].filter(Boolean).join(' / ')}</div>
       <h3><a href={queryPath('/resource/' + item.id, { domain })}>{item.name}</a></h3>
       {item.summary && <p>{item.summary}</p>}
-      {ranking === 'stars' && <div className="discovery-signal">{item.stars.toLocaleString('zh-CN')} GitHub Stars</div>}
       {ranking === 'activity' && <div className="discovery-signal">{signals.join(' · ')}</div>}
     </div>
     <span className="project-arrow" aria-hidden="true">↗</span>
@@ -62,7 +55,7 @@ export function Overview({ data }) {
   const resources = local ? data.recentResources : data.otherResources ?? [];
   const resourceDomain = local ? domain : '';
   const nodes = facets(taxonomy, domain, 'nodes');
-  const shelf = resourceShelves[data.ranking];
+
   const tags = resources.flatMap(item => item.tags ?? []).filter(tag => !resourceDomain || tag.domain_id === resourceDomain);
   const resourceTags = [...new Map(tags.map(tag => [tag.tag_id, tag])).values()].slice(0, 4);
   return <div className="discovery-feed">
@@ -76,13 +69,26 @@ export function Overview({ data }) {
           {tag.name}</a>)}
       </nav>}
     </section>}
+    <section className="panel star-leaderboard" aria-labelledby="star-leaderboard-title">
+      <div className="star-leaderboard-header">
+        <h2 id="star-leaderboard-title">GitHub Star 排行</h2>
+        <a href={scopePath('resources', { domain, sort: 'stars' })}>完整排行 →</a>
+      </div>
+      {data.starRanking?.length ? <ol>{data.starRanking.map(item => <li key={item.id}>
+        <a href={queryPath('/resource/' + item.id, { domain })}>
+          <ResourceAvatar item={item} size={30}/>
+          <span className="star-leaderboard-name">{item.name}</span>
+          <strong><span aria-hidden="true">★</span> {item.stars.toLocaleString('zh-CN')}</strong>
+        </a>
+      </li>)}</ol> : <p>当前领域还没有已同步的高星项目。</p>}
+    </section>
     {!!data.featuredResources?.length && <section aria-labelledby="overview-ranking">
       <div className="discovery-section-head">
-        <h2 id="overview-ranking">{shelf.title}</h2>
-        <a href={scopePath('resources', { domain, ...shelf.params })}>{shelf.action} →</a>
+        <h2 id="overview-ranking">社区热门项目</h2>
+        <a href={scopePath('resources', { domain, sort: 'activity' })}>查看排行 →</a>
       </div>
       <div className="discovery-projects">{data.featuredResources.map(item => <ResourceCard key={item.id} item={item}
-        domain={domain} ranking={data.ranking}/>)}</div>
+        domain={domain} ranking="activity"/>)}</div>
     </section>}
     {!!taxonomy.domains.length && <section aria-labelledby="overview-domains">
       <div className="discovery-section-head"><h2 id="overview-domains">按领域探索</h2></div>

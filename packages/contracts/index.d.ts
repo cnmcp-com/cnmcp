@@ -41,7 +41,14 @@ export interface ResourceSource {
   metadata: { curatedBy?: string; curatedUrl?: string; curatedIssue?: number; description?: string; language?: string; archived?: boolean };
 }
 export interface TopicDetail extends Topic { replies: DiscussionEntry[]; resources: Resource[]; nextPage: number | null }
-export interface ResourceDetail extends Resource { overview_markdown?: string; comments: DiscussionEntry[]; sources: ResourceSource[]; nextPage: number | null }
+export interface ResourceDetail extends Resource {
+  overview_markdown?: string;
+  star_history: { observed_at: number; stars: number }[];
+  github_readme: { introduction: string; use_cases: string[]; checked_at: number } | null;
+  comments: DiscussionEntry[];
+  sources: ResourceSource[];
+  nextPage: number | null;
+}
 export interface Overview { recentTopics: Topic[]; recentResources: Resource[] }
 export interface TopicList { items: Topic[]; nextCursor: string | null }
 export interface ResourceList { items: Resource[]; nextPage: number | null }

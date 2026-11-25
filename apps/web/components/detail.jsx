@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { queryPath, reportReasons, resourceKinds } from '@cnmcp/contracts';
+import { GitHubReadme, GitHubStars } from './github-insights.jsx';
 import { retrievePending, useAction, useData } from './actions.jsx';
 import { Alert, DateLabel, Editor, Empty, ManagedAuthor, Markdown, nameOf, Panel, ResourceAvatar, ResourceRow, scopePath, TopicRow, useCommunity } from './shared.jsx';
 
@@ -105,7 +106,6 @@ function ResourceOverview({ item, domain, taxonomy, actions }) {
   const [primary, ...otherSources] = item.sources;
   const github = item.sources.find(source => source.provider === 'github');
   const facts = [
-    ['GitHub Stars', item.stars?.toLocaleString('zh-CN')],
     ['主要语言', github?.metadata?.language],
     ['代码许可', item.code_license],
     ['权重许可', item.weights_license],
@@ -141,9 +141,10 @@ function ResourceOverview({ item, domain, taxonomy, actions }) {
       <div className="resource-profile-credit">
         {item.author && <span>{item.author} 收录</span>}<ManagedAuthor item={item}/>
         <DateLabel value={item.created_at}/>
-        {item.stars_observed_at != null && <small>Star 快照 <DateLabel value={item.stars_observed_at}/></small>}
       </div>
     </section>
+    <GitHubReadme profile={item.github_readme} source={github}/>
+    <GitHubStars item={item}/>
     {item.overview_markdown?.trim() && <Panel title="项目导读" className="resource-guide">
       <div className="padded"><Markdown text={item.overview_markdown}/></div>
     </Panel>}
